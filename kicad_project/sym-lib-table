@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "gridcap_symbols")(type "KiCad")(uri "${KIPRJMOD}/gridcap_symbols.kicad_sym")(options "")(descr ""))
+)
