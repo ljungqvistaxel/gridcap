@@ -4,6 +4,17 @@ set(CMAKE_C_STANDARD 11)
 
 project(gridcap C)
 
+FILE(
+    GLOB sourceFiles 
+    src/*.c
+    src/*.cpp
+)
+
 add_executable(gridcap
-    main.c
+    src/main.c
+    ${sourceFiles}
+)
+
+target_include_directories(gridcap PRIVATE
+    "include/"
 )
