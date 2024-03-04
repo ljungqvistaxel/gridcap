@@ -99,8 +99,11 @@ void switch_mux(){
 }
 
 float average_reading(){
+	uint8_t sum = 0;
+	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
+		sum += sample_arr[i];
 
-	return -99; //error
+	return sum/sizeof(sample_arr); //error
 }
 
 void send_UART(){
