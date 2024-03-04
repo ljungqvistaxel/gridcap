@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdbool.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -49,6 +50,14 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint16_t adc_buffer[adc_buffer_len];
+uint8_t adc_scale = 0;
+
+const uint8_t max_count = 100;
+uint8_t sample_ix = 0;
+bool finnished_reading;
+
+uint8_t sample_arr[100];
+uint8_t cap_matrix[100][100]; //Place holder for pre defined value estimates
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,11 +73,49 @@ static void MX_TIM9_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/*
+ * Interrupt for reading capacitance of one pad in timed samples (multiple times for one pad),
+ * which gets the capacitance from a pre-calculated matrix of capacitances. When the amount of
+ * samples are collected, it sets a flag to read another pad, and resets/stop the timer for
+ * timing purposes.
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
+	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
+	sample_ix++;
+	if (sample_ix >= max_count){
+		TIM9->CR1 & ~(0x0001); //Stops timer (bit CEN in CR1 register)
+		TIM9->CNT & (0x0000); //Resets timer value (CNT register)
+		sample_ix = 0;
+		finnished_reading = true;
+	}
 
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+}
 
+//Dont forget to start the timer again...
+void switch_mux(){
+
+}
+
+float average_reading(){
+
+	return -99; //error
+}
+
+void send_UART(){
+
+}
+
+void get_adc_scaling(){
+	uint16_t adc_val = adc_buffer[0];
+	if(adc_val == 0){
+		adc_scale = 0;
+		return;
+	}
+	else{
+		adc_scale = (uint8_t)((adc_val/4095)*100);
+	}
 }
 
 /* USER CODE END 0 */
@@ -114,8 +161,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-//	  HAL_Delay(500);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
