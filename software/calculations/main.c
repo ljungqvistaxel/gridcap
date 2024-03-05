@@ -1,28 +1,23 @@
 #include <stdio.h>
 #include <math.h>
 
-#define PICO 0.000000000001
+#include "config.h"
+#include "fileout.h"
 
-// config
-#define serial_resistance 10.0*1000*1000 /*ohms*/
-#define min_capacitance 10 * PICO/*Farads*/ // min capacitance
-#define max_capacitance 100 * PICO/*Farads*/ // max capacitance to be fully measured up to 4RC (~98%)
-#define n_samples 100 // number of samples to calculate
-#define n_charge_levels 256 // number of voltage levels (resolution) incl 0v
-
-// more config
-#define source_voltage 3.3 // voltage of source
-#define time_constants 1 // time constants to calculate to calculate (on max_capacitance)
-#define sample_delay serial_resistance * max_capacitance * time_constants/*RC*/ / n_samples // delay between each sample (seconds)
-#define sample_start_time sample_delay // when the first sample will be (seconds)
-#define max_charge_percentage 100.0 // max adc voltage to calculate (lower value cuts off highest charges)
-
-// do not touch
-#define charge_per_level max_charge_percentage/(n_charge_levels) // real volts per "voltage level"
+//#define DEBUG
+#ifdef DEBUG
+#include "cap_matrix.h"
+#endif
 
 int main(int argc, char** argv)
 {
     printf("begin.\n");
+
+    #ifdef DEBUG
+    printf("sizeof(cap_matrix) = %d\n", (int)sizeof(cap_matrix));
+    printf("cap[0, 10] = %d\n", cap_matrix[0][10]);
+    #endif
+
     printf("sample delay = %f ms\n", sample_delay*1000);
     printf("memory usage = %d (Byte)\n\n", n_samples*n_charge_levels*((int)sizeof(int)));
 
@@ -57,6 +52,7 @@ int main(int argc, char** argv)
     }
 
     // print matrix
+    /*
     for(int y = 0; y < n_charge_levels; y++)
     {
         for(int x = 0; x < n_samples; x++)
@@ -75,6 +71,11 @@ int main(int argc, char** argv)
         }
         printf("\n");
     }
+    */
+
+    printf("\nwriting file \"%s\".\n", output_file_name);
+
+    output_file(matrix);
 
     printf("\ndone.\n");
 
