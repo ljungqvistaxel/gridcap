@@ -6,4 +6,9 @@ project(calculations C)
 
 add_executable(calculations
     main.c
+    "src/fileout.c"
+)
+
+target_include_directories(calculations PRIVATE
+    "include/"
 )
