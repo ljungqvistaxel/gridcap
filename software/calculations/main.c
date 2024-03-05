@@ -5,13 +5,14 @@
 
 // config
 #define serial_resistance 10.0*1000*1000 /*ohms*/
+#define min_capacitance 10 * PICO/*Farads*/ // min capacitance
 #define max_capacitance 100 * PICO/*Farads*/ // max capacitance to be fully measured up to 4RC (~98%)
-#define n_samples 35 // number of samples to calculate
-#define n_charge_levels 64 // number of voltage levels (resolution) incl 0v
+#define n_samples 100 // number of samples to calculate
+#define n_charge_levels 256 // number of voltage levels (resolution) incl 0v
 
 // more config
 #define source_voltage 3.3 // voltage of source
-#define time_constants 2 // time constants to calculate to calculate (on max_capacitance)
+#define time_constants 1 // time constants to calculate to calculate (on max_capacitance)
 #define sample_delay serial_resistance * max_capacitance * time_constants/*RC*/ / n_samples // delay between each sample (seconds)
 #define sample_start_time sample_delay // when the first sample will be (seconds)
 #define max_charge_percentage 100.0 // max adc voltage to calculate (lower value cuts off highest charges)
@@ -22,7 +23,8 @@
 int main(int argc, char** argv)
 {
     printf("begin.\n");
-    printf("sample delay = %f ms\n\n", sample_delay*1000);
+    printf("sample delay = %f ms\n", sample_delay*1000);
+    printf("memory usage = %d (Byte)\n\n", n_samples*n_charge_levels*((int)sizeof(int)));
 
     int matrix[n_samples][n_charge_levels];
 
@@ -48,6 +50,8 @@ int main(int argc, char** argv)
             }
 
             int cap_pf = (int)round(real_capacitance / PICO); // round capacitance to to pF
+            if(real_capacitance > max_capacitance) cap_pf = 0; // filter unneccesary values
+
             matrix[i_sample][i_charge] = cap_pf;
         }
     }
@@ -57,7 +61,17 @@ int main(int argc, char** argv)
     {
         for(int x = 0; x < n_samples; x++)
         {
-            printf("%4d ", matrix[x][n_charge_levels-1-y]);
+            int cap = matrix[x][n_charge_levels-1-y];
+
+            if(cap < min_capacitance/PICO)
+            {
+                printf("   .");
+            }
+            else
+            {
+                printf("%3d ", cap);
+            }
+            
         }
         printf("\n");
     }
