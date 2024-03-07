@@ -80,53 +80,46 @@ static void MX_TIM9_Init(void);
 
 const uint8_t max_count = 100;
 uint8_t sample_ix = 0;
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
 	sample_ix++;
 	if (sample_ix >= max_count){
-		TIM9->CR1 &= ~(0x0001); //Stops timer (bit CEN in CR1 register)
-		TIM9->CNT &= (0x0000); //Resets timer value (CNT register)
+		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
+		TIM9->CNT &= (0x0000); 		//Resets timer value (CNT register)
 		sample_ix = 0;
 		finnished_reading = true;
-		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP charging pin
+		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
 	}
 
 }
 
 uint8_t mux_in_pin = 0x0;
-uint8_t pad_group = 0;
-uint8_t adc_ch[] = {ADC_CHANNEL_0, ADC_CHANNEL_1, ADC_CHANNEL_4, ADC_CHANNEL_6};
 void switch_mux(){
 	const uint8_t num_mux_pins = 16;
-	const uint8_t num_pad_groups = 4;
 
 	if(mux_in_pin > num_mux_pins){
 		mux_in_pin = 0;
-
-		//Switch which ADC channel to use
-		if(pad_group >= num_pad_groups){
-			pad_group = 0;
-		}
-		else pad_group++;
-
-
-		ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk);
-		ADC1->SQR3 |= (adc_ch[pad_group]);
 	}
-	else{
-		mux_in_pin++;
-	}
+	else mux_in_pin++;
 
-
-	GPIOC->ODR &= mux_in_pin << 6; //Switch MUX output
-	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); //Start pad-charging pin
-	TIM9->CR1 |= 0x0001; //starts timer (bit CEN in CR1 register)
+	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output
+	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
+	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
 
+uint8_t pad_group = 0;
 void switch_adc_ch(){
+	const uint8_t 	num_pad_groups = 4;
+	uint8_t 		adc_ch[] = {ADC_CHANNEL_0, ADC_CHANNEL_1, ADC_CHANNEL_4, ADC_CHANNEL_6}; //Hope this works...
 
+	if(pad_group >= num_pad_groups){
+		pad_group = 0;
+	}
+	else pad_group++;
+
+	ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk); //Remove old ADC channel
+	ADC1->SQR3 |= (adc_ch[pad_group]); //Set which ADC channel to use
 }
 
 float average_reading(){
