@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define adc_buffer_len 1
+#define adc_buffer_len 4
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -94,32 +94,34 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 }
 
+uint8_t pad_group = 0;
+void switch_adc_ch(){
+	const uint8_t 	num_pad_groups = 4;
+	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06}; //Hope this works...
+
+	if(pad_group >= num_pad_groups){
+		pad_group = 0;
+	}
+	else pad_group++;
+	HAL_ADC_Stop_DMA(&hadc1);
+	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
+	ADC1->SQR3 |= (0x06); //Set which ADC channel to use
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
+}
+
 uint8_t mux_in_pin = 0x0;
 void switch_mux(){
 	const uint8_t num_mux_pins = 16;
 
 	if(mux_in_pin > num_mux_pins){
 		mux_in_pin = 0;
+		switch_adc_ch();
 	}
 	else mux_in_pin++;
 
 	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
-}
-
-uint8_t pad_group = 0;
-void switch_adc_ch(){
-	const uint8_t 	num_pad_groups = 4;
-	uint8_t 		adc_ch[] = {ADC_CHANNEL_0, ADC_CHANNEL_1, ADC_CHANNEL_4, ADC_CHANNEL_6}; //Hope this works...
-
-	if(pad_group >= num_pad_groups){
-		pad_group = 0;
-	}
-	else pad_group++;
-
-	ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk); //Remove old ADC channel
-	ADC1->SQR3 |= (adc_ch[pad_group]); //Set which ADC channel to use
 }
 
 float average_reading(){
@@ -180,15 +182,20 @@ int main(void)
   MX_ADC1_Init();
   MX_TIM9_Init();
   /* USER CODE BEGIN 2 */
+
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
   HAL_TIM_Base_Start_IT(&htim9);//Start 1KHz timer, used for interrupts
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  //ADC1->SQR3 &= (0x06);//Sets channel0 to first in sequence (we have told to only have 1)
   while (1)
   {
+	  if(finnished_reading){
+		  //Calculate average reading
+		  //Then send UART, lastly switch MUX
+		  switch_mux();
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -317,9 +324,10 @@ static void MX_ADC1_Init(void)
   }
   /* USER CODE BEGIN ADC1_Init 2 */
   {
+  //hadc1.Init.NbrOfConversion = 1;
   ADC1->SQR1 &= ~(ADC_SQR1_L);//RESET to 1 convertion
-  ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk);
-  ADC1->SQR3 |= (ADC_CHANNEL_0);//Sets channel0 to first in sequence (we have told to only have 1)
+  ADC1->SQR3 &= (0x00000000);
+  ADC1->SQR3 |= (0x00);//Sets channel0 to first in sequence (we have told to only have 1)
 
 
   /* USER CODE END ADC1_Init 2 */
