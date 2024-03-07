@@ -31,7 +31,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define adc_buffer_len 4
+#define adc_buffer_len 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,7 +54,7 @@ uint8_t adc_scale = 0;
 bool finnished_reading;
 
 uint8_t sample_arr[100];
-uint8_t cap_matrix[100][100]; //Place holder for pre defined value estimates
+uint8_t cap_matrix[100][100]; //Placeholder for pre-defined value estimates
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +71,28 @@ static void MX_TIM9_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+float average_reading(){
+	uint8_t sum = 0;
+	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
+		sum += sample_arr[i];
+
+	return sum/sizeof(sample_arr);
+}
+
+void send_UART(){
+
+}
+
+uint8_t get_adc_scaling(uint16_t adc_val){
+	if(adc_val == 0){
+		adc_scale = 0;
+	}
+	else adc_scale = (uint8_t)((adc_val/4095)*100);
+
+	return adc_scale;
+
+}
+
 /*
  * Interrupt for reading capacitance of one pad in timed samples (multiple times for one pad),
  * which gets the capacitance from a pre-calculated matrix of capacitances. When the amount of
@@ -82,7 +104,7 @@ const uint8_t max_count = 100;
 uint8_t sample_ix = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
+	sample_arr[sample_ix] = cap_matrix[sample_ix][get_adc_scaling(adc_buffer[0])];
 	sample_ix++;
 	if (sample_ix >= max_count){
 		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
@@ -105,7 +127,7 @@ void switch_adc_ch(){
 	else pad_group++;
 	HAL_ADC_Stop_DMA(&hadc1);
 	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
-	ADC1->SQR3 |= (0x06); //Set which ADC channel to use
+	ADC1->SQR3 |= (adc_ch[3]); //Set which ADC channel to use
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
 }
 
@@ -122,29 +144,6 @@ void switch_mux(){
 	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
-}
-
-float average_reading(){
-	uint8_t sum = 0;
-	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
-		sum += sample_arr[i];
-
-	return sum/sizeof(sample_arr);
-}
-
-void send_UART(){
-
-}
-
-void get_adc_scaling(){
-	uint16_t adc_val = adc_buffer[0];
-	if(adc_val == 0){
-		adc_scale = 0;
-		return;
-	}
-	else{
-		adc_scale = (uint8_t)((adc_val/4095)*100);
-	}
 }
 
 /* USER CODE END 0 */
@@ -324,14 +323,15 @@ static void MX_ADC1_Init(void)
   }
   /* USER CODE BEGIN ADC1_Init 2 */
   {
-  //hadc1.Init.NbrOfConversion = 1;
-  ADC1->SQR1 &= ~(ADC_SQR1_L);//RESET to 1 convertion
-  ADC1->SQR3 &= (0x00000000);
-  ADC1->SQR3 |= (0x00);//Sets channel0 to first in sequence (we have told to only have 1)
 
+	  ADC1->SQR1 &= ~(ADC_SQR1_L);//RESET to 1 convertion
+	  ADC1->SQR3 &= (0x00000000);
+	  ADC1->SQR3 |= (0x00);//Sets channel0 to first in sequence (we have told to only have 1)
+
+  }
 
   /* USER CODE END ADC1_Init 2 */
-  }
+
 }
 
 /**
