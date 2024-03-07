@@ -51,8 +51,6 @@ UART_HandleTypeDef huart2;
 uint16_t adc_buffer[adc_buffer_len];
 uint8_t adc_scale = 0;
 
-const uint8_t max_count = 100;
-uint8_t sample_ix = 0;
 bool finnished_reading;
 
 uint8_t sample_arr[100];
@@ -79,6 +77,10 @@ static void MX_TIM9_Init(void);
  * samples are collected, it sets a flag to read another pad, and resets/stop the timer for
  * timing purposes.
  */
+
+const uint8_t max_count = 100;
+uint8_t sample_ix = 0;
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
@@ -88,13 +90,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		TIM9->CNT &= (0x0000); //Resets timer value (CNT register)
 		sample_ix = 0;
 		finnished_reading = true;
+		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP charging pin
 	}
 
 }
 
-//Dont forget to start the timer again...
+uint8_t mux_in_pin = 0x0;
+uint8_t pad_group = 0;
+uint8_t adc_ch[] = {ADC_CHANNEL_0, ADC_CHANNEL_1, ADC_CHANNEL_4, ADC_CHANNEL_6};
 void switch_mux(){
+	const uint8_t num_mux_pins = 16;
+	const uint8_t num_pad_groups = 4;
 
+	if(mux_in_pin > num_mux_pins){
+		mux_in_pin = 0;
+
+		//Switch which ADC channel to use
+		if(pad_group >= num_pad_groups){
+			pad_group = 0;
+		}
+		else pad_group++;
+
+
+		ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk);
+		ADC1->SQR3 |= (adc_ch[pad_group]);
+	}
+	else{
+		mux_in_pin++;
+	}
+
+
+	GPIOC->ODR &= mux_in_pin << 6; //Switch MUX output
+	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); //Start pad-charging pin
+	TIM9->CR1 |= 0x0001; //starts timer (bit CEN in CR1 register)
 }
 
 void switch_adc_ch(){
@@ -106,7 +134,7 @@ float average_reading(){
 	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
 		sum += sample_arr[i];
 
-	return sum/sizeof(sample_arr); //error
+	return sum/sizeof(sample_arr);
 }
 
 void send_UART(){
@@ -165,6 +193,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //ADC1->SQR3 &= (0x06);//Sets channel0 to first in sequence (we have told to only have 1)
   while (1)
   {
     /* USER CODE END WHILE */
@@ -294,13 +323,14 @@ static void MX_ADC1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN ADC1_Init 2 */
+  {
   ADC1->SQR1 &= ~(ADC_SQR1_L);//RESET to 1 convertion
   ADC1->SQR3 &= ~(ADC_SQR3_SQ1_Msk);
   ADC1->SQR3 |= (ADC_CHANNEL_0);//Sets channel0 to first in sequence (we have told to only have 1)
 
 
   /* USER CODE END ADC1_Init 2 */
-
+  }
 }
 
 /**
@@ -411,10 +441,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, Z_Pin|S2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, S3_Pin|S1_Pin|S0_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, S3_Pin|S2_Pin|S1_Pin|S0_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -429,15 +459,15 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Z_Pin S2_Pin */
-  GPIO_InitStruct.Pin = Z_Pin|S2_Pin;
+  /*Configure GPIO pin : Z_Pin */
+  GPIO_InitStruct.Pin = Z_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(Z_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : S3_Pin S1_Pin S0_Pin */
-  GPIO_InitStruct.Pin = S3_Pin|S1_Pin|S0_Pin;
+  /*Configure GPIO pins : S3_Pin S2_Pin S1_Pin S0_Pin */
+  GPIO_InitStruct.Pin = S3_Pin|S2_Pin|S1_Pin|S0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
