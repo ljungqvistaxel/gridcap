@@ -54,7 +54,7 @@ uint8_t adc_scale = 0;
 bool finnished_reading;
 
 uint8_t sample_arr[100];
-uint8_t cap_matrix[100][100]; //Placeholder for pre-defined value estimates
+uint8_t cap_matrix[100][256]; //Placeholder for pre-defined value estimates
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,10 +84,14 @@ void send_UART(){
 }
 
 void get_adc_scaling(uint16_t adc_val){
-	if(adc_val == 0){
-		adc_scale = 0;
-	}
-	else adc_scale = (uint8_t)((adc_val/4095)*100);
+//	if(adc_val == 0){
+//		adc_scale = 0;
+//	}
+//	else adc_scale = (uint8_t)((adc_val/4095)*100);
+
+	double scale_factor = 0.0622716;
+
+	adc_scale = (uint8_t)scale_factor*adc_val;
 }
 
 /*
@@ -188,9 +192,9 @@ int main(void)
   while (1)
   {
 	  if(finnished_reading){
-		  //Calculate average reading
+		  float capacitance = average_reading();
 		  //Then send UART, lastly switch MUX
-		  switch_mux();
+		  switch_mux(); //Starts the charging and reading of next pad
 	  }
 	  if((ADC1->SR & 0x01) == 1){//ADC convertion complete, TODO NOT TESTED
 		  get_adc_scaling(adc_buffer[0]);//Update adc_scale variable as fast as possible
