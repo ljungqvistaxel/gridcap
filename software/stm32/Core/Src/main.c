@@ -102,18 +102,23 @@ float average_reading(){
 }
 
 void send_UART(){
-
+	HAL_UART_Transmit(&huart2, pData, Size, Timeout)
 }
 
 uint8_t pad_group = 0;
+uint8_t pad_nbr = 0;
 void switch_adc_ch(){
 	const uint8_t 	num_pad_groups = 4;
 	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06}; //Hope this works...
 
 	if(pad_group >= num_pad_groups){
 		pad_group = 0;
+		pad_nbr = 0;
 	}
-	else pad_group++;
+	else{
+		pad_group++;
+		pad_nbr++;
+	}
 
 	HAL_ADC_Stop_DMA(&hadc1);
 
@@ -131,9 +136,12 @@ void switch_mux(){
 		mux_in_pin = 0;
 		switch_adc_ch();
 	}
-	else mux_in_pin++;
+	else {
+		mux_in_pin++;
+		pad_nbr++;
+	}
 
-	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output
+	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output, TODO not tested
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
