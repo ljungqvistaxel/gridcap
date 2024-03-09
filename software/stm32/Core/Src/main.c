@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
+#include <cap_matrix.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -49,12 +50,10 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint16_t adc_buffer[adc_buffer_len];
-uint8_t adc_scale = 0;
 
 bool finnished_reading;
 
 uint8_t sample_arr[100];
-uint8_t cap_matrix[100][256]; //Placeholder for pre-defined value estimates
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -71,6 +70,29 @@ static void MX_TIM9_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+/*
+ * Interrupt for reading capacitance of one pad in timed samples (multiple times for one pad),
+ * which gets the capacitance from a pre-calculated matrix of capacitances. When the amount of
+ * samples are collected, it sets a flag to read another pad, and resets/stop the timer for
+ * timing purposes.
+ */
+
+const uint8_t max_count = 100;
+uint8_t sample_ix = 0;
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+	sample_arr[sample_ix] = cap_matrix[sample_ix][(adc_buffer[0]>>4)];
+	sample_ix++;
+	if (sample_ix >= max_count){
+		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
+		TIM9->CNT &= (0x0000); 		//Resets timer value (CNT register)
+		sample_ix = 0;
+		finnished_reading = true;
+		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
+	}
+
+}
+
 float average_reading(){
 	uint8_t sum = 0;
 	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
@@ -83,40 +105,6 @@ void send_UART(){
 
 }
 
-void get_adc_scaling(uint16_t adc_val){
-//	if(adc_val == 0){
-//		adc_scale = 0;
-//	}
-//	else adc_scale = (uint8_t)((adc_val/4095)*100);
-
-	double scale_factor = 0.0622716;
-
-	adc_scale = (uint8_t)scale_factor*adc_val;
-}
-
-/*
- * Interrupt for reading capacitance of one pad in timed samples (multiple times for one pad),
- * which gets the capacitance from a pre-calculated matrix of capacitances. When the amount of
- * samples are collected, it sets a flag to read another pad, and resets/stop the timer for
- * timing purposes.
- */
-
-const uint8_t max_count = 100;
-uint8_t sample_ix = 0;
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
-	sample_ix++;
-	if (sample_ix >= max_count){
-		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
-		TIM9->CNT &= (0x0000); 		//Resets timer value (CNT register)
-		sample_ix = 0;
-		finnished_reading = true;
-		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
-	}
-
-}
-
 uint8_t pad_group = 0;
 void switch_adc_ch(){
 	const uint8_t 	num_pad_groups = 4;
@@ -126,9 +114,12 @@ void switch_adc_ch(){
 		pad_group = 0;
 	}
 	else pad_group++;
+
 	HAL_ADC_Stop_DMA(&hadc1);
+
 	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
-	ADC1->SQR3 |= (adc_ch[3]); //Set which ADC channel to use
+	ADC1->SQR3 |= (adc_ch[pad_group]); //Set which ADC channel to use
+
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
 }
 
@@ -195,9 +186,6 @@ int main(void)
 		  float capacitance = average_reading();
 		  //Then send UART, lastly switch MUX
 		  switch_mux(); //Starts the charging and reading of next pad
-	  }
-	  if((ADC1->SR & 0x01) == 1){//ADC convertion complete, TODO NOT TESTED
-		  get_adc_scaling(adc_buffer[0]);//Update adc_scale variable as fast as possible
 	  }
     /* USER CODE END WHILE */
 
