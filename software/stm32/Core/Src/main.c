@@ -83,14 +83,11 @@ void send_UART(){
 
 }
 
-uint8_t get_adc_scaling(uint16_t adc_val){
+void get_adc_scaling(uint16_t adc_val){
 	if(adc_val == 0){
 		adc_scale = 0;
 	}
 	else adc_scale = (uint8_t)((adc_val/4095)*100);
-
-	return adc_scale;
-
 }
 
 /*
@@ -104,7 +101,7 @@ const uint8_t max_count = 100;
 uint8_t sample_ix = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	sample_arr[sample_ix] = cap_matrix[sample_ix][get_adc_scaling(adc_buffer[0])];
+	sample_arr[sample_ix] = cap_matrix[sample_ix][adc_scale];
 	sample_ix++;
 	if (sample_ix >= max_count){
 		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
@@ -194,6 +191,9 @@ int main(void)
 		  //Calculate average reading
 		  //Then send UART, lastly switch MUX
 		  switch_mux();
+	  }
+	  if((ADC1->SR & 0x01) == 1){//ADC convertion complete, TODO NOT TESTED
+		  get_adc_scaling(adc_buffer[0]);//Update adc_scale variable as fast as possible
 	  }
     /* USER CODE END WHILE */
 
