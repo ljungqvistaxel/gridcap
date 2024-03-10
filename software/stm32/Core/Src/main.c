@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <cap_matrix.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -101,36 +102,33 @@ float average_reading(){
 	return sum/sizeof(sample_arr);
 }
 
-void send_UART(){
-	HAL_UART_Transmit(&huart2, pData, Size, Timeout)
-}
-
-uint8_t pad_group = 0;
 uint8_t pad_nbr = 0;
 void switch_adc_ch(){
+	static uint8_t mux_nbr = 0;
 	const uint8_t 	num_pad_groups = 4;
-	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06}; //Hope this works...
+	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06};
 
-	if(pad_group >= num_pad_groups){
-		pad_group = 0;
+	if(mux_nbr >= num_pad_groups){
+		mux_nbr = 0;
 		pad_nbr = 0;
 	}
 	else{
-		pad_group++;
+		mux_nbr++;
 		pad_nbr++;
 	}
 
 	HAL_ADC_Stop_DMA(&hadc1);
 
 	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
-	ADC1->SQR3 |= (adc_ch[pad_group]); //Set which ADC channel to use
+	ADC1->SQR3 |= (adc_ch[mux_nbr]); //Set which ADC channel to use
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
 }
 
-uint8_t mux_in_pin = 0x0;
+
 void switch_mux(){
-	const uint8_t num_mux_pins = 16;
+	static uint8_t 	mux_in_pin = 0x0;
+	const uint8_t 	num_mux_pins = 16;
 
 	if(mux_in_pin > num_mux_pins){
 		mux_in_pin = 0;
@@ -144,6 +142,12 @@ void switch_mux(){
 	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output, TODO not tested
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
+}
+
+void send_UART(uint8_t capacitance){
+	char tx_buff[13];
+	sprintf(tx_buff, "(p:%d), (C:%d)", pad_nbr, capacitance);
+	HAL_UART_Transmit(&huart2, (uint8_t*)&tx_buff, 13, 0);
 }
 
 /* USER CODE END 0 */
@@ -192,8 +196,8 @@ int main(void)
   {
 	  if(finnished_reading){
 		  float capacitance = average_reading();
-		  //Then send UART, lastly switch MUX
-		  switch_mux(); //Starts the charging and reading of next pad
+		  send_UART(capacitance);
+		  switch_mux(); //Starts the charging and reading of next pad, and also switch MUX output :)
 	  }
     /* USER CODE END WHILE */
 
