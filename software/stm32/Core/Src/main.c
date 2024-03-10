@@ -78,12 +78,11 @@ static void MX_TIM9_Init(void);
  * timing purposes.
  */
 
-const uint8_t max_count = 100;
+const uint8_t max_count = 99;
 uint8_t sample_ix = 0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	sample_arr[sample_ix] = cap_matrix[sample_ix][(adc_buffer[0]>>4)];
-	sample_ix++;
+
 	if (sample_ix >= max_count){
 		TIM9->CR1 &= ~(0x0001); 	//Stops timer (bit CEN in CR1 register)
 		TIM9->CNT &= (0x0000); 		//Resets timer value (CNT register)
@@ -91,7 +90,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		finnished_reading = true;
 		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
 	}
-
+	else {
+		sample_arr[sample_ix] = cap_matrix[sample_ix][(adc_buffer[0]>>4)];
+		sample_ix++;
+	}
 }
 
 float average_reading(){
@@ -99,7 +101,7 @@ float average_reading(){
 	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
 		sum += sample_arr[i];
 
-	return sum/sizeof(sample_arr);
+	return (sum/sizeof(sample_arr));
 }
 
 uint8_t pad_nbr = 0;
@@ -147,7 +149,7 @@ void switch_mux(){
 void send_UART(uint8_t capacitance){
 	char tx_buff[13];
 	sprintf(tx_buff, "(p:%d), (C:%d)", pad_nbr, capacitance);
-	HAL_UART_Transmit(&huart2, (uint8_t*)&tx_buff, 13, 0);
+	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, 13, 0);
 }
 
 /* USER CODE END 0 */
@@ -188,6 +190,7 @@ int main(void)
 
   HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
   HAL_TIM_Base_Start_IT(&htim9);//Start 1KHz timer, used for interrupts
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -195,9 +198,11 @@ int main(void)
   while (1)
   {
 	  if(finnished_reading){
-		  float capacitance = average_reading();
-		  send_UART(capacitance);
+		  float pad_capacitance = average_reading();
+		  send_UART(pad_capacitance);
 		  switch_mux(); //Starts the charging and reading of next pad, and also switch MUX output :)
+
+		  finnished_reading = false;
 	  }
     /* USER CODE END WHILE */
 
