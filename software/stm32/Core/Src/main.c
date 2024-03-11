@@ -96,33 +96,37 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	}
 }
 
-float average_reading(){
-	uint8_t sum = 0;
-	for(uint8_t i = 0; i<sizeof(sample_arr); i++)
+uint8_t average_reading(){
+	uint16_t sum = 0;
+	for(uint8_t i = 0; i<sizeof(sample_arr); i++){
 		sum += sample_arr[i];
+		sample_arr[i] = 0;
+	}
 
-	return (sum/sizeof(sample_arr));
+	if(sum <= 0)
+		return 0;
+	else return (sum/sizeof(sample_arr));
 }
 
 uint8_t pad_nbr = 0;
 void switch_adc_ch(){
-	static uint8_t mux_nbr = 0;
-	const uint8_t 	num_pad_groups = 4;
+	static uint8_t 	adc_ix = 0;
+	const uint8_t 	num_pad_groups = 3;
 	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06};
 
-	if(mux_nbr >= num_pad_groups){
-		mux_nbr = 0;
+	if(adc_ix >= num_pad_groups){
+		adc_ix = 0;
 		pad_nbr = 0;
 	}
 	else{
-		mux_nbr++;
+		adc_ix++;
 		pad_nbr++;
 	}
 
 	HAL_ADC_Stop_DMA(&hadc1);
 
 	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
-	ADC1->SQR3 |= (adc_ch[mux_nbr]); //Set which ADC channel to use
+	ADC1->SQR3 |= (adc_ch[adc_ix]); //Set which ADC channel to use
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
 }
@@ -130,9 +134,9 @@ void switch_adc_ch(){
 
 void switch_mux(){
 	static uint8_t 	mux_in_pin = 0x0;
-	const uint8_t 	num_mux_pins = 16;
+	const uint8_t 	num_mux_pins = 0x0F;
 
-	if(mux_in_pin > num_mux_pins){
+	if(mux_in_pin >= num_mux_pins){
 		mux_in_pin = 0;
 		switch_adc_ch();
 	}
@@ -142,14 +146,15 @@ void switch_mux(){
 	}
 
 	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output, TODO not tested
+	HAL_Delay(1);
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
 
 void send_UART(uint8_t capacitance){
-	char tx_buff[13];
-	sprintf(tx_buff, "(p:%d), (C:%d)", pad_nbr, capacitance);
-	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, 13, 0);
+	char tx_buff[50];
+	uint8_t str_len = sprintf(tx_buff, "%d, %d\n\r", pad_nbr, capacitance);
+	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, str_len, 5);
 }
 
 /* USER CODE END 0 */
@@ -198,11 +203,11 @@ int main(void)
   while (1)
   {
 	  if(finnished_reading){
-		  float pad_capacitance = average_reading();
+		  finnished_reading = false;
+		  uint8_t pad_capacitance = average_reading();
 		  send_UART(pad_capacitance);
 		  switch_mux(); //Starts the charging and reading of next pad, and also switch MUX output :)
 
-		  finnished_reading = false;
 	  }
     /* USER CODE END WHILE */
 
