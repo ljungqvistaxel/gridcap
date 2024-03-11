@@ -91,7 +91,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
 	}
 	else {
-		sample_arr[sample_ix] = cap_matrix[sample_ix][(adc_buffer[0]>>4)];
+		sample_arr[sample_ix] = cap_matrix[sample_ix][(adc_buffer[0])];
 		sample_ix++;
 	}
 }
@@ -126,7 +126,7 @@ void switch_adc_ch(){
 	HAL_ADC_Stop_DMA(&hadc1);
 
 	ADC1->SQR3 &= (0x00000000); //Remove old ADC channel
-	ADC1->SQR3 |= (adc_ch[adc_ix]); //Set which ADC channel to use
+	ADC1->SQR3 |= (adc_ch[0]); //Set which ADC channel to use
 
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
 }
@@ -146,7 +146,7 @@ void switch_mux(){
 	}
 
 	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output, TODO not tested
-	HAL_Delay(1);
+	HAL_Delay(10);
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin
 	TIM9->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
@@ -154,7 +154,7 @@ void switch_mux(){
 void send_UART(uint8_t capacitance){
 	char tx_buff[50];
 	uint8_t str_len = sprintf(tx_buff, "%d, %d\n\r", pad_nbr, capacitance);
-	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, str_len, 5);
+	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, str_len, 100);
 }
 
 /* USER CODE END 0 */
@@ -239,7 +239,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 84;
+  RCC_OscInitStruct.PLL.PLLN = 64;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -283,8 +283,8 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.Resolution = ADC_RESOLUTION_8B;
   hadc1.Init.ScanConvMode = ENABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
@@ -366,9 +366,9 @@ static void MX_TIM9_Init(void)
 
   /* USER CODE END TIM9_Init 1 */
   htim9.Instance = TIM9;
-  htim9.Init.Prescaler = 84-1;
+  htim9.Init.Prescaler = 64-1;
   htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim9.Init.Period = 100-1;
+  htim9.Init.Period = 10-1;
   htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim9.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
