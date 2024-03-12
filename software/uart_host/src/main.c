@@ -13,7 +13,8 @@
 #include "uart.h"
 
 #define MICRO 0.000001
-#define PICO 0.000000000001
+#define NANO  0.000000001
+#define PICO  0.000000000001
 
 #define serial_resistance 20 * 1000.0 // resistance in series when charging capacitor (ohm)
 #define flip_voltage 2.8 // voltage where schmitt trigger flips (volt)
@@ -41,7 +42,7 @@ int main(int argc, char** argv)
 
     printf("Good morning sir.\n");
 
-    //printf("2.234 us = %f pF\n", (cap_from_time(2.234 * MICRO) / PICO));
+    printf("4488 ns = %f pF\n", cap_from_time((4488.0 * NANO))/PICO);
 
     memset(cap_buf, 0, sizeof(cap_buf)); // empty capacitances
     memset(tare_buf, 0, sizeof(tare_buf)); // empty tare buffer
@@ -170,7 +171,7 @@ void show_live()
                 continue;
             }
 
-            int cap = round(cap_from_time(time) / PICO);
+            int cap = round(cap_from_time(time * NANO)/PICO);
 
             //printf("pad: %d, cap: %d\n", pad, cap);
             cap_buf[pad] = cap;
