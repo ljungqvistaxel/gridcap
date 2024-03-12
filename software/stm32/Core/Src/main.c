@@ -47,7 +47,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-bool finnished_reading;
+bool finished_reading;
 
 
 /* USER CODE END PV */
@@ -64,49 +64,64 @@ static void MX_TIM5_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-uint32_t charge_time[10];
+uint16_t arr_charge_time[10];
 uint8_t sample_ix = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)
+	HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
 
-	if(sample_ix >= sizeof(charge_time)-1){
+	if(sample_ix >= (sizeof(arr_charge_time)/sizeof(uint16_t))){
 		sample_ix = 0;
-		finnished_reading = true;
+		finished_reading = true;
 	}
 	else{
-		charge_time[sample_ix] = TIM5->CNT;
+		arr_charge_time[sample_ix] = TIM5->CNT;
 		sample_ix++;
 	}
+
 	TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
+	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
 }
 
-void convert_to_ns(uint8_t length, uint32_t *arr){
+float convert_to_ns(uint16_t val){
+	float time_const = 11.9;//11.9 ns/clk pulse
 
+	return (float) (val * time_const);
 }
 
-uint8_t average_reading(){
+uint16_t average_reading(){
+	uint8_t length = sizeof(arr_charge_time)/sizeof(uint16_t);
+	float sum = 0;
 
+	for(uint8_t i=0; i<length; i++){
+		sum += convert_to_ns(arr_charge_time[i]);
+	}
+
+	return (uint16_t) (sum/length);
 }
 
 uint8_t pad_nbr = 0;
 void switch_sch_trig(){
-	static uint8_t 	adc_ix = 0;
-	const uint8_t 	num_pad_groups = 3;
-	uint8_t 		adc_ch[] = {0x00, 0x01, 0x04, 0x06};
+	static uint8_t 	arr_ix = 0;
+	const uint8_t 	num_pad_groups = 4;
+	uint8_t 		sch_trig_arr[] = {EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI4_IRQn};
 
-	if(adc_ix >= num_pad_groups){
-		adc_ix = 0;
+	//Disable all EXTI interrupts!
+	for(uint8_t i = 0; i<num_pad_groups; i++){
+		HAL_NVIC_DisableIRQ(sch_trig_arr[i]);
+	}
+
+	if(arr_ix >= num_pad_groups-1){
+		arr_ix = 0;
 		pad_nbr = 0;
 	}
 	else{
-		adc_ix++;
+		arr_ix++;
 		pad_nbr++;
 	}
 
-
-
-	//HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+	HAL_NVIC_EnableIRQ(sch_trig_arr[0]);
 }
 
 //switch used MUX and Schmitt trigger
@@ -129,9 +144,9 @@ void switch_pad(){
 	TIM5->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
 
-void send_UART(uint8_t capacitance){
+void send_UART(uint16_t charge_time){
 	char tx_buff[50];
-	uint8_t str_len = sprintf(tx_buff, "%d, %d\n\r", pad_nbr, capacitance);
+	uint8_t str_len = sprintf(tx_buff, "%d, %d\n\r", pad_nbr, charge_time);
 	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, str_len, 100);
 }
 
@@ -176,13 +191,18 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(finnished_reading){
-		  finnished_reading = false;
-		  uint8_t pad_capacitance = average_reading();
-		  send_UART(pad_capacitance);
-		  switch_pad(); //Starts the charging and reading of next pad, and also switch MUX output :)
-
+	  if( (finished_reading == false) & ((GPIOB->ODR & 1<<12) == 0)){
+		  HAL_Delay(1);
+		  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+		  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET);
 	  }
+	  if(finished_reading){
+		  uint16_t charge_time = average_reading();
+		  send_UART(charge_time);
+		  switch_pad(); //Starts the charging and reading of next pad, and also switch MUX output :)
+		  finished_reading = false;
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -387,6 +407,9 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI4_IRQn);
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
