@@ -7,8 +7,17 @@
 #include <signal.h>
 
 #include <stdlib.h>
+#include <math.h>
 
 #include "uart.h"
+
+#define MICRO 0.000001
+#define PICO 0.000000000001
+
+#define serial_resistance 20 * 1000.0 // resistance in series when charging capacitor (ohm)
+#define flip_voltage 2.8 // voltage where schmitt trigger flips (volt)
+#define charging_voltage 3.3 // voltage supplied for charging capacitor (volt)
+#define flip_delay 0.0 // constant delay for the schmitt trigger to flip (seconds)
 
 int cap_buf[64];
 int tare_buf[64];
@@ -16,6 +25,7 @@ int tare_buf[64];
 int running = 1; // set to 0 to stop program safely
 
 void print_cap();
+double cap_from_time(double);
 
 void signal_handler(int s)
 {
@@ -27,6 +37,8 @@ int main(int argc, char** argv)
     signal(SIGINT, signal_handler);
 
     printf("Good morning sir.\n");
+
+    //printf("2.234 us = %f pF\n", (cap_from_time(2.234 * MICRO) / PICO));
 
     //memset(cap_buf, 0, sizeof(cap_buf)); // empty capacitances
 
@@ -64,14 +76,24 @@ int main(int argc, char** argv)
         {
             //printf("%s", read_buf);
             char* pad_end = strchr(read_buf, ',');
-            int pad = atoi(read_buf);
-            int cap = atoi(pad_end+1);
 
+            // if separator (,) not found
+            if(pad_end - read_buf >= sizeof(read_buf)-1)
+            {
+                continue;
+            }
+
+            int pad = atoi(read_buf);
+            int time = atoi(pad_end+1);
+
+            // check invalid pad
             if(pad < 0 || pad >= 64)
             {
                 //printf("Error. Pad number \"%d\" invalid.\n");
-                return 1;
+                continue;
             }
+
+            int cap = round(cap_from_time(time) / PICO);
 
             //printf("pad: %d, cap: %d\n", pad, cap);
             cap_buf[pad] = cap;
@@ -103,4 +125,16 @@ void print_cap()
         }
         printf("\n");
     }
+}
+
+double cap_from_time(double t)
+{
+    static double precalc_const = 0;
+    if(precalc_const == 0)
+    {
+        precalc_const = serial_resistance*log(1-(flip_voltage/charging_voltage));
+        precalc_const = 1/precalc_const;
+    }
+
+    return -(t*precalc_const);
 }
