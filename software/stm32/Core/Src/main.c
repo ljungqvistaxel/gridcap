@@ -68,7 +68,7 @@ uint16_t arr_charge_time[10];
 uint8_t sample_ix = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)
-	HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+	//HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
 
 	if(sample_ix >= (sizeof(arr_charge_time)/sizeof(uint16_t))){
@@ -193,8 +193,11 @@ int main(void)
   {
 	  if( (finished_reading == false) & ((GPIOB->ODR & 1<<12) == 0)){
 		  HAL_Delay(1);
-		  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+		  //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
 		  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET);
+		  TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
+		  TIM5->CR1 |= 0x0001;
 	  }
 	  if(finished_reading){
 		  uint16_t charge_time = average_reading();
