@@ -45,7 +45,7 @@ int main(int argc, char** argv)
             }
 
             int cap_pf = (int)round(real_capacitance / PICO); // round capacitance to to pF
-            if(real_capacitance > max_capacitance) cap_pf = 0; // filter unneccesary values
+            if(real_capacitance > max_capacitance*2) cap_pf = 0; // filter unneccesary values
 
             matrix[i_sample][i_charge] = cap_pf;
         }
