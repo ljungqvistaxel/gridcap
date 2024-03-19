@@ -11,6 +11,7 @@
 //#include <pthread.h>
 
 #include "uart.h"
+#include "mux_map.h"
 
 #define MICRO 0.000001
 #define NANO  0.000000001
@@ -44,7 +45,7 @@ int main(int argc, char** argv)
 
     printf("4488 ns = %f pF\n", cap_from_time((4488.0 * NANO))/PICO);
 
-    memset(cap_buf, 0, sizeof(cap_buf)); // empty capacitances
+    memset(cap_buf, -1, sizeof(cap_buf)); // empty capacitances
     memset(tare_buf, 0, sizeof(tare_buf)); // empty tare buffer
 
     char scan_buf[256];
@@ -170,6 +171,8 @@ void show_live()
                 //printf("Error. Pad number \"%d\" invalid.\n");
                 continue;
             }
+
+            pad = mux_map[pad]; // get correct pad index
 
             int cap = round(cap_from_time(time * NANO)/PICO);
 
