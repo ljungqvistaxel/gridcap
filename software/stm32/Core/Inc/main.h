@@ -77,8 +77,14 @@ void Error_Handler(void);
 #define sch_trigg_EXTI4_EXTI_IRQn EXTI4_IRQn
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
-#define Z_Pin GPIO_PIN_12
-#define Z_GPIO_Port GPIOB
+#define Z0_Pin GPIO_PIN_12
+#define Z0_GPIO_Port GPIOB
+#define Z1_Pin GPIO_PIN_13
+#define Z1_GPIO_Port GPIOB
+#define Z2_Pin GPIO_PIN_14
+#define Z2_GPIO_Port GPIOB
+#define Z3_Pin GPIO_PIN_15
+#define Z3_GPIO_Port GPIOB
 #define S3_Pin GPIO_PIN_6
 #define S3_GPIO_Port GPIOC
 #define S2_Pin GPIO_PIN_7

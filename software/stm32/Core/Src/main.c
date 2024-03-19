@@ -64,11 +64,21 @@ static void MX_TIM5_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+void start_pad_charging(){
+	GPIOB->ODR |= (Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);
+}
+
+void stop_pad_charging(){
+	GPIOB->ODR &= ~(Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);	//STOP pad-charging pins
+}
+
 uint16_t arr_charge_time[10];
 uint8_t sample_ix = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)
+	//GPIOB->ODR &= ~(Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);	//STOP pad-charging pins
 	//HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+	stop_pad_charging();
 
 
 	if(sample_ix >= (sizeof(arr_charge_time)/sizeof(uint16_t))){
@@ -81,7 +91,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	}
 
 	TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
-	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
+
+	//HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET); //STOP pad-charging pin
 }
 
 float convert_to_ns(uint16_t val){
@@ -140,7 +151,9 @@ void switch_pad(){
 	GPIOC->ODR &= ~(0x0F << 6);								//Reset MUX pins
 	GPIOC->ODR |= mux_in_pin << 6; 							//Switch MUX output, TODO not tested.
 	HAL_Delay(10);											//Discharge connected pad.
-	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin.
+	//GPIOB->ODR |= (Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);		//Start pad-charging pins
+	//HAL_GPIO_WritePin(Z0_GPIO_Port, Z0_Pin, GPIO_PIN_SET); 	//Start pad-charging pin.
+	start_pad_charging();
 	TIM5->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
 
@@ -191,11 +204,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if( (finished_reading == false) & ((Z_GPIO_Port->ODR & Z_Pin) == 0)){
+	  if( (finished_reading == false) & ((Z0_GPIO_Port->ODR & Z0_Pin) == 0)){
 		  HAL_Delay(1);
 		  //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
-		  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET);
+		  start_pad_charging();
 		  TIM5->CR1 |= 0x0001; //Start timer again
 	  }
 	  if(finished_reading){
@@ -357,7 +370,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, S3_Pin|S2_Pin|S1_Pin|S0_Pin, GPIO_PIN_RESET);
@@ -381,12 +394,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : Z_Pin */
-  GPIO_InitStruct.Pin = Z_Pin;
+  /*Configure GPIO pins : Z0_Pin Z1_Pin Z2_Pin Z3_Pin */
+  GPIO_InitStruct.Pin = Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(Z_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pins : S3_Pin S2_Pin S1_Pin S0_Pin */
   GPIO_InitStruct.Pin = S3_Pin|S2_Pin|S1_Pin|S0_Pin;
