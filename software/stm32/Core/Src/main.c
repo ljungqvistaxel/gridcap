@@ -131,7 +131,7 @@ void switch_sch_trig(){
 		pad_nbr++;
 	}
 
-	HAL_NVIC_EnableIRQ(sch_trig_arr[0]);
+	HAL_NVIC_EnableIRQ(sch_trig_arr[arr_ix]);
 }
 
 //switch used MUX and Schmitt trigger
@@ -204,6 +204,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //Re-charge same pad
 	  if( (finished_reading == false) & ((Z0_GPIO_Port->ODR & Z0_Pin) == 0)){
 		  HAL_Delay(1);
 		  //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
