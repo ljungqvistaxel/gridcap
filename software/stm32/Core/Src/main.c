@@ -107,10 +107,9 @@ void switch_sch_trig(){
 	const uint8_t 	num_pad_groups = 4;
 	uint8_t 		sch_trig_arr[] = {EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI4_IRQn};
 
-	//Disable all EXTI interrupts!
-	for(uint8_t i = 0; i<num_pad_groups; i++){
-		HAL_NVIC_DisableIRQ(sch_trig_arr[i]);
-	}
+	//Disable EXTI interrupt before switching
+	HAL_NVIC_DisableIRQ(sch_trig_arr[arr_ix]);
+
 
 	if(arr_ix >= num_pad_groups-1){
 		arr_ix = 0;
@@ -138,7 +137,8 @@ void switch_pad(){
 		pad_nbr++;
 	}
 
-	GPIOC->ODR &= mux_in_pin << 6; 							//Switch MUX output, TODO not tested.
+	GPIOC->ODR &= ~(0x0F << 6);								//Reset MUX pins
+	GPIOC->ODR |= mux_in_pin << 6; 							//Switch MUX output, TODO not tested.
 	HAL_Delay(10);											//Discharge connected pad.
 	HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET); 	//Start pad-charging pin.
 	TIM5->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
@@ -191,13 +191,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if( (finished_reading == false) & ((GPIOB->ODR & 1<<12) == 0)){
+	  if( (finished_reading == false) & ((Z_GPIO_Port->ODR & Z_Pin) == 0)){
 		  HAL_Delay(1);
 		  //HAL_NVIC_EnableIRQ(EXTI0_IRQn);
 
 		  HAL_GPIO_WritePin(Z_GPIO_Port, Z_Pin, GPIO_PIN_SET);
-		  TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
-		  TIM5->CR1 |= 0x0001;
+		  TIM5->CR1 |= 0x0001; //Start timer again
 	  }
 	  if(finished_reading){
 		  uint16_t charge_time = average_reading();
