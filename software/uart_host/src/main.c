@@ -18,9 +18,9 @@
 #define PICO  0.000000000001
 
 #define serial_resistance 20 * 1000.0 // resistance in series when charging capacitor (ohm)
-#define flip_voltage 2.8 // voltage where schmitt trigger flips (volt)
+#define flip_voltage 1.6 // voltage where schmitt trigger flips (volt)
 #define charging_voltage 3.3 // voltage supplied for charging capacitor (volt)
-#define flip_delay 0.0 // constant delay for the schmitt trigger to flip (seconds)
+#define flip_delay 700.0 // constant delay for the schmitt trigger to flip (ns)
 
 int cap_buf[64];
 int tare_buf[64];
@@ -34,7 +34,14 @@ void show_live();
 
 void signal_handler(int s)
 {
-    running = 0;
+    if(running == 1)
+    {
+        running = 0;
+    }
+    else
+    {
+        //exit(0);
+    }
 }
 
 int main(int argc, char** argv)
@@ -63,11 +70,25 @@ int main(int argc, char** argv)
         {
             running = 1;
             show_live();
+            running = 0;
         }
         else if(strcmp(scan_buf, "tare") == 0)
         {
-            memcpy(tare_buf, cap_buf, sizeof(tare_buf));
-            print_matrix(tare_buf, 0, 0);
+            int filled = 1;
+            for(int i = 0; i < 64; i++) // check if sensor data has been received.
+            {
+                if(cap_buf[i] == -1) filled = 0;
+            }
+
+            if(filled == 1) // ok, do tare
+            {
+                memcpy(tare_buf, cap_buf, sizeof(tare_buf));
+                print_matrix(tare_buf, 0, 0);
+            }
+            else // do not tare
+            {
+                printf("Not enought data to tare.\n");
+            }
         }
         else if(strcmp(scan_buf, "reset") == 0)
         {
@@ -174,7 +195,7 @@ void show_live()
 
             pad = mux_map[pad]; // get correct pad index
 
-            int cap = round(cap_from_time(time * NANO)/PICO);
+            int cap = round(cap_from_time((time+flip_delay) * NANO)/PICO);
 
             //printf("pad: %d, cap: %d\n", pad, cap);
             cap_buf[pad] = cap;
