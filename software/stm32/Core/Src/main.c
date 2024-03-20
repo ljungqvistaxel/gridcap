@@ -42,6 +42,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim11;
 
 UART_HandleTypeDef huart2;
 
@@ -57,12 +58,19 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM11_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void us_delay(uint16_t us){
+	__HAL_TIM_SET_COUNTER(&htim11, 0);
+
+	while(__HAL_TIM_GET_COUNTER(&htim11)< us);
+}
 
 void start_pad_charging(uint16_t pin){
 	GPIOB->ODR |= pin;
@@ -76,6 +84,7 @@ uint16_t arr_charge_time[10];
 uint8_t sample_ix = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)
+
 	stop_pad_charging();
 
 	if(sample_ix >= (sizeof(arr_charge_time)/sizeof(uint16_t))){
@@ -83,9 +92,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		finished_reading = true;
 	}
 	else{
-		arr_charge_time[sample_ix] = TIM5->CNT;
+		arr_charge_time[sample_ix] = __HAL_TIM_GET_COUNTER(&htim5);
 		sample_ix++;
 	}
+
 
 	TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
 }
@@ -147,7 +157,7 @@ void switch_pad(){
 
 	GPIOC->ODR &= ~(0x0F << 6);								//Reset MUX pins
 	GPIOC->ODR |= mux_in_pin << 6; 							//Switch MUX output
-	HAL_Delay(1);											//Discharge connected pad.
+	us_delay(100);											//Discharge connected pad.
 	start_pad_charging(active_charging_pin);
 	TIM5->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
 }
@@ -190,8 +200,10 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM5_Init();
+  MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_Base_Start(&htim5);//Start 84MHz timer.
+  HAL_TIM_Base_Start(&htim11); //Start timer for us-delay.
 
   /* USER CODE END 2 */
 
@@ -201,7 +213,7 @@ int main(void)
   {
 	  //Re-charge same pad
 	  if( (finished_reading == false) & ((Z0_GPIO_Port->ODR & active_charging_pin) == 0)){
-		  HAL_Delay(1);
+		  us_delay(100);
 
 		  start_pad_charging(active_charging_pin);
 		  TIM5->CR1 |= 0x0001; //Start timer again
@@ -307,6 +319,37 @@ static void MX_TIM5_Init(void)
   /* USER CODE BEGIN TIM5_Init 2 */
 
   /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM11 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM11_Init(void)
+{
+
+  /* USER CODE BEGIN TIM11_Init 0 */
+
+  /* USER CODE END TIM11_Init 0 */
+
+  /* USER CODE BEGIN TIM11_Init 1 */
+
+  /* USER CODE END TIM11_Init 1 */
+  htim11.Instance = TIM11;
+  htim11.Init.Prescaler = 84-1;
+  htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim11.Init.Period = 65535;
+  htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM11_Init 2 */
+
+  /* USER CODE END TIM11_Init 2 */
 
 }
 
