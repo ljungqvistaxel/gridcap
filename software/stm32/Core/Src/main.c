@@ -22,7 +22,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
-#include <cap_matrix.h>
 #include <stdio.h>
 /* USER CODE END Includes */
 
