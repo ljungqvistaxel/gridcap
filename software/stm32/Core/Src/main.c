@@ -21,7 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdbool.h>
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +32,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define adc_buffer_len 1
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -40,27 +40,132 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-DMA_HandleTypeDef hdma_adc1;
+TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim11;
 
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-uint16_t adc_buffer[adc_buffer_len];
+
+bool finished_reading;
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_ADC1_Init(void);
+static void MX_TIM5_Init(void);
+static void MX_TIM11_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void us_delay(uint16_t us){
+	__HAL_TIM_SET_COUNTER(&htim11, 0);
+
+	while(__HAL_TIM_GET_COUNTER(&htim11)< us);
+}
+
+void start_pad_charging(uint16_t pin){
+	GPIOB->ODR |= pin;
+}
+
+void stop_pad_charging(){
+	GPIOB->ODR &= ~(Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);	//STOP pad-charging pins
+}
+
+uint16_t arr_charge_time[10];
+uint8_t sample_ix = 0;
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)
+
+	stop_pad_charging();
+
+	if(sample_ix >= (sizeof(arr_charge_time)/sizeof(uint16_t))){
+		sample_ix = 0;
+		finished_reading = true;
+	}
+	else{
+		arr_charge_time[sample_ix] = __HAL_TIM_GET_COUNTER(&htim5);
+		sample_ix++;
+	}
+
+
+	TIM5->CNT &= (0x00000000);//Resets timer value (CNT register)
+}
+
+float convert_to_ns(uint16_t val){
+	float time_const = 11.9;//11.9 ns/clk pulse
+
+	return (float) (val * time_const);
+}
+
+uint16_t average_reading(){
+	uint8_t length = sizeof(arr_charge_time)/sizeof(uint16_t);
+	float sum = 0;
+
+	for(uint8_t i=0; i<length; i++){
+		sum += convert_to_ns(arr_charge_time[i]);
+	}
+
+	return (uint16_t) (sum/length);
+}
+
+uint8_t 	pad_nbr = 0;
+uint16_t 	active_charging_pin = Z0_Pin;
+void switch_sch_trig(){
+	static uint8_t 	arr_ix = 0;
+	const uint8_t 	num_pad_groups = 4;
+	uint8_t 		sch_trig_arr[] = {EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI4_IRQn};
+	uint16_t		charging_pins[] = {Z0_Pin, Z1_Pin, Z2_Pin, Z3_Pin};
+
+	//Disable EXTI interrupt before switching
+	HAL_NVIC_DisableIRQ(sch_trig_arr[arr_ix]);
+
+
+	if(arr_ix >= num_pad_groups-1){
+		arr_ix = 0;
+		pad_nbr = 0;
+	}
+	else{
+		arr_ix++;
+		pad_nbr++;
+	}
+	active_charging_pin = charging_pins[arr_ix];
+	HAL_NVIC_EnableIRQ(sch_trig_arr[arr_ix]);
+}
+
+//switch used MUX and Schmitt trigger
+void switch_pad(){
+	static uint8_t 	mux_in_pin = 0x0;
+	const uint8_t 	num_mux_pins = 0x0F;
+
+	if(mux_in_pin >= num_mux_pins){
+		mux_in_pin = 0;
+		switch_sch_trig();
+	}
+	else {
+		mux_in_pin++;
+		pad_nbr++;
+	}
+
+	GPIOC->ODR &= ~(0x0F << 6);								//Reset MUX pins
+	GPIOC->ODR |= mux_in_pin << 6; 							//Switch MUX output
+	us_delay(100);											//Discharge connected pad.
+	start_pad_charging(active_charging_pin);
+	TIM5->CR1 |= 0x0001; 									//starts timer (bit CEN in CR1 register)
+}
+
+void send_UART(uint16_t charge_time){
+	char tx_buff[50];
+	uint8_t str_len = sprintf(tx_buff, "%d, %d\n\r", pad_nbr, charge_time);
+	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buff, str_len, 100);
+}
 
 /* USER CODE END 0 */
 
@@ -92,17 +197,32 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USART2_UART_Init();
-  MX_ADC1_Init();
+  MX_TIM5_Init();
+  MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc_buffer, adc_buffer_len);
+  HAL_TIM_Base_Start(&htim5);//Start 84MHz timer.
+  HAL_TIM_Base_Start(&htim11); //Start timer for us-delay.
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  //Re-charge same pad
+	  if( (finished_reading == false) & ((Z0_GPIO_Port->ODR & active_charging_pin) == 0)){
+		  us_delay(100);
+
+		  start_pad_charging(active_charging_pin);
+		  TIM5->CR1 |= 0x0001; //Start timer again
+	  }
+	  if(finished_reading){
+		  uint16_t charge_time = average_reading();
+		  send_UART(charge_time);
+		  switch_pad(); //Starts the charging and reading of next pad, and also switch MUX output :)
+		  finished_reading = false;
+	  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -157,54 +277,78 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ADC1 Initialization Function
+  * @brief TIM5 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_ADC1_Init(void)
+static void MX_TIM5_Init(void)
 {
 
-  /* USER CODE BEGIN ADC1_Init 0 */
+  /* USER CODE BEGIN TIM5_Init 0 */
 
-  /* USER CODE END ADC1_Init 0 */
+  /* USER CODE END TIM5_Init 0 */
 
-  ADC_ChannelConfTypeDef sConfig = {0};
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
 
-  /* USER CODE BEGIN ADC1_Init 1 */
+  /* USER CODE BEGIN TIM5_Init 1 */
 
-  /* USER CODE END ADC1_Init 1 */
-
-  /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 0;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 4294967295;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
   {
     Error_Handler();
   }
-
-  /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
-  sConfig.Channel = ADC_CHANNEL_0;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN ADC1_Init 2 */
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
 
-  /* USER CODE END ADC1_Init 2 */
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
+  * @brief TIM11 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM11_Init(void)
+{
+
+  /* USER CODE BEGIN TIM11_Init 0 */
+
+  /* USER CODE END TIM11_Init 0 */
+
+  /* USER CODE BEGIN TIM11_Init 1 */
+
+  /* USER CODE END TIM11_Init 1 */
+  htim11.Instance = TIM11;
+  htim11.Init.Prescaler = 84-1;
+  htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim11.Init.Period = 65535;
+  htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM11_Init 2 */
+
+  /* USER CODE END TIM11_Init 2 */
 
 }
 
@@ -242,22 +386,6 @@ static void MX_USART2_UART_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA2_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -277,11 +405,23 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, S0_Pin|S1_Pin|S2_Pin|S3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : B1_Pin sch_trigg_EXTI2_Pin */
+  GPIO_InitStruct.Pin = B1_Pin|sch_trigg_EXTI2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : sch_trigg_EXTI0_Pin sch_trigg_EXTI1_Pin sch_trigg_EXTI4_Pin */
+  GPIO_InitStruct.Pin = sch_trigg_EXTI0_Pin|sch_trigg_EXTI1_Pin|sch_trigg_EXTI4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
@@ -290,7 +430,40 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : Z0_Pin Z1_Pin Z2_Pin Z3_Pin */
+  GPIO_InitStruct.Pin = Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : S0_Pin S1_Pin S2_Pin S3_Pin */
+  GPIO_InitStruct.Pin = S0_Pin|S1_Pin|S2_Pin|S3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  //We only need one interrupt at the time
+  HAL_NVIC_DisableIRQ(EXTI1_IRQn);
+
+  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+
+  HAL_NVIC_DisableIRQ(EXTI4_IRQn);
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
