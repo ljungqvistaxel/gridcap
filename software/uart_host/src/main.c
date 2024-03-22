@@ -8,76 +8,86 @@
 
 #include <stdlib.h>
 #include <math.h>
-//#include <pthread.h>
+#include <pthread.h>
 
 #include "uart.h"
-#include "mux_map.h"
+#include "config.h"
 
-#define MICRO 0.000001
-#define NANO  0.000000001
-#define PICO  0.000000000001
+enum program_state
+{
+    menu,
+    live,
+    exiting
+};
 
-#define serial_resistance 20 * 1000.0 // resistance in series when charging capacitor (ohm)
-#define flip_voltage 1.6 // voltage where schmitt trigger flips (volt)
-#define charging_voltage 3.3 // voltage supplied for charging capacitor (volt)
-#define flip_delay 700.0 // constant delay for the schmitt trigger to flip (ns)
+double cap_buf[64];
+double tare_buf[64];
 
-int cap_buf[64];
-int tare_buf[64];
+int run_threads = 1; // set to 0 to stop program safely
+pthread_t uart_thread;
 
-int running = 0; // set to 0 to stop program safely
+enum program_state program_state = menu;
 
-void print_matrix(int* matrix, int overwrite, int tare_adjust);
-double cap_from_time(double);
-
+void print_matrix(double* matrix, int overwrite, int tare_adjust);
+void on_new_cap();
+void on_uart_err();
 void show_live();
+void safe_exit();
 
 void signal_handler(int s)
 {
-    if(running == 1)
+    if(program_state == live)
     {
-        running = 0;
+        program_state = menu;
     }
-    else
+    else if(program_state == menu)
     {
-        //exit(0);
+        program_state = exiting;
+        safe_exit();
     }
 }
 
 int main(int argc, char** argv)
 {
-    signal(SIGINT, signal_handler);
-
     printf("Good morning sir.\n");
+
+    signal(SIGINT, signal_handler); // for catching ctrl-c
+
+    memset(cap_buf, 0, sizeof(cap_buf)); // clear capacitances
+    memset(tare_buf, 0, sizeof(tare_buf)); // clear tare buffer
+
+    // init threads
+    uart_thread_arguments utarg;
+    utarg.running = &run_threads;
+    utarg.on_new_value = NULL;
+    utarg.on_error = NULL;
+
+    pthread_create(&uart_thread, NULL, uart_tstart, (void*)&utarg);
 
     printf("4488 ns = %f pF\n", cap_from_time((4488.0 * NANO))/PICO);
 
-    memset(cap_buf, -1, sizeof(cap_buf)); // empty capacitances
-    memset(tare_buf, 0, sizeof(tare_buf)); // empty tare buffer
-
     char scan_buf[256];
 
-    while(1)
+    // menu loop
+    while(program_state != exiting)
     {
         printf("\nMenu:\n live\n tare\n reset (tare and buffers)\n exit\n\n");
         printf("gridcap > ");
         scanf("%s", scan_buf);
         if(strcmp(scan_buf, "exit") == 0)
         {
-            return 0;
+            program_state = exiting;
         }
         else if(strcmp(scan_buf, "live") == 0)
         {
-            running = 1;
             show_live();
-            running = 0;
         }
         else if(strcmp(scan_buf, "tare") == 0)
         {
             int filled = 1;
             for(int i = 0; i < 64; i++) // check if sensor data has been received.
             {
-                if(cap_buf[i] == -1) filled = 0;
+                if(cap_buf[i] == 0) filled = 0;
             }
 
             if(filled == 1) // ok, do tare
@@ -101,15 +111,24 @@ int main(int argc, char** argv)
 
     }
 
-    printf("Good night.\n");
+    safe_exit();
     return 0;
 }
 
-void print_matrix(int* matrix, int overwrite, int tare_adjust)
+void safe_exit()
+{
+    printf("exiting.\n");
+    run_threads = 0;
+    pthread_join(uart_thread, NULL);
+    printf("Good night.\n");
+    exit(0);
+}
+
+void print_matrix(double* matrix, int overwrite, int tare_adjust)
 {
     if(overwrite == 1)
     {
-        printf("\033[8A");
+        printf("\033[16A");
     }
     
     for(int y = 0; y < 8; y++)
@@ -118,95 +137,41 @@ void print_matrix(int* matrix, int overwrite, int tare_adjust)
         {
             if(tare_adjust == 1)
             {
-                printf("%4d ", matrix[y*8+x]-tare_buf[y*8+x]);
+                printf("%6.1f ", matrix[y*8+x]-tare_buf[y*8+x]);
             }
             else
             {
-                printf("%4d ", matrix[y*8+x]);
+                printf("%6.1f ", matrix[y*8+x]);
             }
         }
-        printf("\n");
+        printf("\n\n");
     }
-}
-
-double cap_from_time(double t)
-{
-    static double precalc_const = 0;
-    if(precalc_const == 0)
-    {
-        precalc_const = serial_resistance*log(1-(flip_voltage/charging_voltage));
-        precalc_const = 1/precalc_const;
-    }
-
-    return -(t*precalc_const);
 }
 
 void show_live()
 {
-    static char uart_dev[] = "/dev/tty.usbmodem1103";
-    int serial_port = open(uart_dev, O_RDWR|O_NOCTTY|O_NONBLOCK);
-    if(serial_port < 0)
-    {
-        printf("Error opening serial port: %s\n", strerror(errno));
-        return;
-    }
-    else
-    {
-        printf("Successfully opened serial port.\n");
-    }
-
-    if(uart_init(&serial_port) != 0)
-    {
-        printf("Error initiating serial port. Abort mission.\n");
-        close(serial_port);
-        return;
-    }
+    program_state = live;
     
-    printf("\n");
+    //printf("\n");
+    printf("\n\n\n\n\n\n\n\n\n");
     printf("\n\n\n\n\n\n\n\n\n");
 
-    char read_buf[256];
-    while(running)
+    print_matrix(cap_buf, 1, 1);
+    while(program_state == live)
     {
-        memset(read_buf, '\0', sizeof(read_buf));
 
-        int read_result = read(serial_port, read_buf, sizeof(read_buf));
-
-        if(read_result > 0)
-        {
-            //printf("%s", read_buf);
-            char* pad_end = strchr(read_buf, ',');
-
-            // if separator (,) not found
-            if(pad_end - read_buf >= sizeof(read_buf)-1)
-            {
-                continue;
-            }
-
-            int pad = atoi(read_buf);
-            int time = atoi(pad_end+1);
-
-            // check invalid pad
-            if(pad < 0 || pad >= 64)
-            {
-                //printf("Error. Pad number \"%d\" invalid.\n");
-                continue;
-            }
-
-            pad = mux_map[pad]; // get correct pad index
-
-            int cap = round(cap_from_time((time+flip_delay) * NANO)/PICO);
-
-            //printf("pad: %d, cap: %d\n", pad, cap);
-            cap_buf[pad] = cap;
-            print_matrix(cap_buf, 1, 1);
-        }
-        else
-        {
-            //printf("no read\n");
-        }
     }
+}
 
-    printf("Closing serial port.\n");
-    close(serial_port);
+void on_new_cap()
+{
+    if(program_state == live)
+    {
+        print_matrix(cap_buf, 1, 1);
+    }
+}
+
+void on_uart_err()
+{
+
 }

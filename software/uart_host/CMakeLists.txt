@@ -15,6 +15,10 @@ add_executable(gridcap
     ${sourceFiles}
 )
 
+target_link_libraries(gridcap
+    -lpthread
+)
+
 target_include_directories(gridcap PRIVATE
     "include/"
 )
