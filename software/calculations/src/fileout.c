@@ -1,7 +1,8 @@
 #include "fileout.h"
 #include "config.h"
 #include <stdio.h>
-#include <malloc.h>
+//#include <malloc.h>
+#include <stdlib.h>
 
 #define buf_size 5000000
 
@@ -37,12 +38,12 @@ void output_file(int matrix[n_samples][n_charge_levels])
         {
             if(v != 0)
             {
-                res = sprintf_s(&matrix_buf[matrix_buf_size], buf_size-matrix_buf_size, ", "); // add ,
+                res = sprintf(&matrix_buf[matrix_buf_size], ", "); // add ,
                 if(res < 0) {printf("error writing v to matrix_buf. t=%d, v=%d\n", t, v);}
                 matrix_buf_size += res;
             }
 
-            res = sprintf_s(&matrix_buf[matrix_buf_size], buf_size-matrix_buf_size, "%3d", matrix[t][v]); // add cap value
+            res = sprintf(&matrix_buf[matrix_buf_size], "%3d", matrix[t][v]); // add cap value
             if(res < 0) {printf("error writing v to matrix_buf. t=%d, v=%d\n", t, v);}
             matrix_buf_size += res;
         }
@@ -51,7 +52,7 @@ void output_file(int matrix[n_samples][n_charge_levels])
     matrix_buf[matrix_buf_size++] = '\0'; // end of string
 
     char* file_buf = malloc(sizeof(char) * buf_size);
-    int file_len = sprintf_s(file_buf, buf_size, fileformat, sample_delay/MICRO, n_samples-1, n_charge_levels-1, n_samples, n_charge_levels, matrix_buf);
+    int file_len = sprintf(file_buf, fileformat, sample_delay/MICRO, n_samples-1, n_charge_levels-1, n_samples, n_charge_levels, matrix_buf);
     printf("file length is %d\n", file_len);
 
     FILE* hfile = fopen(output_file_name, "w");
