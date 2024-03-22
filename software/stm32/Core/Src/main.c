@@ -100,7 +100,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 }
 
 float convert_to_ns(uint16_t val){
-	float time_const = 11.9;//11.9 ns/clk pulse
+	float time_const = 11.9;//11.9 ns/clk-pulse
 
 	return (float) (val * time_const);
 }
@@ -121,8 +121,8 @@ uint16_t 	active_charging_pin = Z0_Pin;
 void switch_sch_trig(){
 	static uint8_t 	arr_ix = 0;
 	const uint8_t 	num_pad_groups = 4;
-	uint8_t 		sch_trig_arr[] = {EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn, EXTI4_IRQn};
-	uint16_t		charging_pins[] = {Z0_Pin, Z1_Pin, Z2_Pin, Z3_Pin};
+	uint8_t 		sch_trig_arr[] = {EXTI2_IRQn, EXTI4_IRQn, EXTI1_IRQn, EXTI0_IRQn };
+	uint16_t		charging_pins[] = {Z0_Pin, Z1_Pin , Z2_Pin, Z3_Pin};
 
 	//Disable EXTI interrupt before switching
 	HAL_NVIC_DisableIRQ(sch_trig_arr[arr_ix]);
@@ -406,7 +406,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, Z3_Pin|Z0_Pin|Z1_Pin|Z2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, S0_Pin|S1_Pin|S2_Pin|S3_Pin, GPIO_PIN_RESET);
@@ -430,8 +430,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : Z0_Pin Z1_Pin Z2_Pin Z3_Pin */
-  GPIO_InitStruct.Pin = Z0_Pin|Z1_Pin|Z2_Pin|Z3_Pin;
+  /*Configure GPIO pins : Z3_Pin Z0_Pin Z1_Pin Z2_Pin */
+  GPIO_InitStruct.Pin = Z3_Pin|Z0_Pin|Z1_Pin|Z2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -461,7 +461,7 @@ static void MX_GPIO_Init(void)
   //We only need one interrupt at the time
   HAL_NVIC_DisableIRQ(EXTI1_IRQn);
 
-  HAL_NVIC_DisableIRQ(EXTI2_IRQn);
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
 
   HAL_NVIC_DisableIRQ(EXTI4_IRQn);
 /* USER CODE END MX_GPIO_Init_2 */
