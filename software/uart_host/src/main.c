@@ -23,6 +23,18 @@ enum program_state
 double cap_buf[64];
 double tare_buf[64];
 
+double test_buf[64] =
+{
+    0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
+    0.1, 0.2, 0.7, 3.7, 5.5, 3.2, 0.4, 0.3,
+    0.3, 0.5, 1.2, 10.7, 24.5, 11.3, 7.0, 5.6,
+    0.1, 0.2, 0.7, 3.7, 5.5, 3.2, 0.4, 0.3,
+    0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7,
+    0.0, 0.2, 0.2, 0.2, 0.1, 0.2, 0.3, 0.2,
+    -0.1, -0.2, -0.7, -3.7, -5.5, -3.2, -0.4, -0.3,
+    -24.7, -0.1, -38.5, -0.3, -3, -15, -0.6, -0.7
+};
+
 int run_threads = 1; // set to 0 to stop program safely
 pthread_t uart_thread;
 
@@ -50,6 +62,8 @@ void signal_handler(int s)
 int main(int argc, char** argv)
 {
     printf("Good morning sir.\n");
+
+    //print_matrix(test_buf, 0, 0);
 
     signal(SIGINT, signal_handler); // for catching ctrl-c
 
@@ -131,18 +145,36 @@ void print_matrix(double* matrix, int overwrite, int tare_adjust)
         printf("\033[16A");
     }
     
+    double val = 0;
     for(int y = 0; y < 8; y++)
     {
         for(int x = 0; x < 8; x++)
         {
+
             if(tare_adjust == 1)
             {
-                printf("%6.1f ", matrix[y*8+x]-tare_buf[y*8+x]);
+                val = matrix[y*8+x]-tare_buf[y*8+x];
             }
             else
             {
-                printf("%6.1f ", matrix[y*8+x]);
+                val = matrix[y*8+x];
             }
+
+            if(val < 0 && val > -25) // negative
+            {
+                printf("\033[38;5;%dm", (int)(22 + 1*((int)-val/5)));
+            }
+            else if(val >= 0 && val < 25) // positive
+            {
+                printf("\033[38;5;%dm", (int)(22 + 36*((int)val/5)));
+            }
+            else // out of range
+            {
+                printf("\033[38;5;%dm", 160);
+            }
+
+            printf("%6.1f ", val);
+            printf("\033[0m");
         }
         printf("\n\n");
     }
@@ -152,7 +184,7 @@ void show_live()
 {
     program_state = live;
     
-    //printf("\n");
+    printf("\n");
     printf("\n\n\n\n\n\n\n\n\n");
     printf("\n\n\n\n\n\n\n\n\n");
 
