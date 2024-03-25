@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define DEBUG 0
+
 #define MICRO 0.000001
 #define NANO  0.000000001
 #define PICO  0.000000000001

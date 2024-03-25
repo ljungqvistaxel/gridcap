@@ -72,8 +72,9 @@ int main(int argc, char** argv)
 
     // init threads
     uart_thread_arguments utarg;
+    utarg.cap_buf = &cap_buf;
     utarg.running = &run_threads;
-    utarg.on_new_value = NULL;
+    utarg.on_new_value = &on_new_cap;
     utarg.on_error = NULL;
 
     pthread_create(&uart_thread, NULL, uart_tstart, (void*)&utarg);

@@ -14,33 +14,52 @@
 
 int uart_init(int* serial_port);
 
+int connected = 0;
+
 /* Initiate UART serial port. Returns 0 is success. */
 void* uart_tstart(void* arg)
 {
     uart_thread_arguments* utarg = (uart_thread_arguments*) arg;
-
     int serial_port;
+
+    uart_init(&serial_port);
+
     while(*(utarg->running) != 0)
     {
-        // init connection
-        while(uart_init(&serial_port) != 0 && *(utarg->running) != 0)
-        {   
-            // could not connect
-            sleep(1); // 1s delay between retries
-            //printf("trying to reconnect.\n");
+
+        // ensure connection
+        if(connected == 0)
+        {
+            printf("trying to reconnect.\n");
+            int res = uart_init(&serial_port);
+            if(res != 0)
+            {
+                sleep(1); // 1s delay between retries
+            }
+            else
+            {
+                printf("connected.\n");
+            }
         }
 
-        char read_buf[256];
-        while(*(utarg->running) != 0)
+        // fetch data
+        if(connected == 1)
         {
+            static char read_buf[256];
             memset(read_buf, '\0', sizeof(read_buf));
 
             int read_result = read(serial_port, read_buf, sizeof(read_buf));
-
+            
             if(read_result > 0)
             {
-                //printf("%s", read_buf);
+                if(DEBUG != 0)printf("%s", read_buf);
                 char* pad_end = strchr(read_buf, ',');
+                if(pad_end == NULL)
+                {
+                    //error
+                    continue;
+                }
+                //printf("found '%c'\n", *pad_end);
 
                 // if separator (,) not found
                 if(pad_end - read_buf >= sizeof(read_buf)-1)
@@ -62,15 +81,25 @@ void* uart_tstart(void* arg)
 
                 double cap = cap_from_time((time+flip_delay) * NANO)/PICO;
 
-                //printf("pad: %d, cap: %d\n", pad, cap);
+                //printf("pad: %d, cap: %f\n", pad, cap);
                 (*(utarg->cap_buf))[pad] = cap;
+                //printf("buffer ok\n");
                 //print_matrix(cap_buf, 1, 1);
-                utarg->on_new_value();
+                (utarg->on_new_value)();
             }
             else if(read_result < 0) // error
             {
-                printf("connection lost\n");
-                break;
+                if(errno == 35) // "resource temporarily unavailable"
+                {
+                    // just try again
+                    continue;
+                }
+
+                printf("error reading serial port: (%d) %s\n", errno, strerror(errno));
+                printf("closing.\n");
+                close(serial_port);
+                connected = 0;
+                //break;
             }
         }
     }
@@ -87,26 +116,27 @@ int uart_init(int* serial_port)
     *serial_port = open(uart_dev, O_RDWR|O_NOCTTY|O_NONBLOCK);
     if(*serial_port < 0)
     {
-        //printf("Error opening serial port: %s\n", strerror(errno));
+        printf("error opening serial port: %s\n", strerror(errno));
         return 1;
     }
     else
     {
-        //printf("Successfully opened serial port.\n");
+        printf("successfully opened serial port.\n");
     }
 
-    if(uart_init(serial_port) != 0)
+    /*if(uart_init(serial_port) != 0)
     {
-        //printf("Error initiating serial port. Abort mission.\n");
+        printf("Error initiating serial port. Abort mission.\n");
         close(*serial_port);
         return 2;
-    }
+    }*/
 
     // fetch tty settings
     struct termios tty;
     if(tcgetattr(*serial_port, &tty) != 0)
     {
-        //printf("Error fetching tty settings: %s\n", strerror(errno));
+        printf("error fetching tty settings: %s\n", strerror(errno));
+        close(*serial_port);
         return 3;
     }
 
@@ -119,17 +149,19 @@ int uart_init(int* serial_port)
     //tty.c_lflag &= ~ICANON; // do not wait for \n
     tty.c_lflag |= ICANON; // wait for \n
     tty.c_lflag &= ~ECHONL; // Disable "echo new line"
-    tty.c_cc[VTIME] = 1; // timeout
+    tty.c_cc[VTIME] = 10; // timeout (ds)
     tty.c_cc[VMIN] = 0; // Any message length
 
     // set tty settings
     if(tcsetattr(*serial_port, TCSANOW, &tty) != 0)
     {
-        //printf("Error setting tty settings: %s\n", strerror(errno));
+        printf("error setting tty settings: %s\n", strerror(errno));
+        close(*serial_port);
         return 4;
     }
 
     printf("uart communication established.\n");
+    connected = 1;
     return 0;
 }
 

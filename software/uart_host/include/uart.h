@@ -4,7 +4,7 @@
 typedef struct 
 {
     int* running;
-    double* cap_buf[64];
+    double (*cap_buf)[64];
     void (*on_new_value) (void);
     void (*on_error) (void);
 } uart_thread_arguments;
