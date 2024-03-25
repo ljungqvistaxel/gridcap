@@ -143,7 +143,7 @@ void print_matrix(double* matrix, int overwrite, int tare_adjust)
 {
     if(overwrite == 1)
     {
-        printf("\033[16A");
+        printf("\033[24A");
     }
     
     double val = 0;
@@ -177,7 +177,7 @@ void print_matrix(double* matrix, int overwrite, int tare_adjust)
             printf("%6.1f ", val);
             printf("\033[0m");
         }
-        printf("\n\n");
+        printf("\n\n\n");
     }
 }
 
@@ -186,6 +186,7 @@ void show_live()
     program_state = live;
     
     printf("\n");
+    printf("\n\n\n\n\n\n\n\n\n");
     printf("\n\n\n\n\n\n\n\n\n");
     printf("\n\n\n\n\n\n\n\n\n");
 
