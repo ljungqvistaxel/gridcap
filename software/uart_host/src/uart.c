@@ -30,7 +30,7 @@ void* uart_tstart(void* arg)
         // ensure connection
         if(connected == 0)
         {
-            printf("trying to reconnect.\n");
+            //printf("trying to reconnect.\n");
             int res = uart_init(&serial_port);
             if(res != 0)
             {
@@ -38,7 +38,7 @@ void* uart_tstart(void* arg)
             }
             else
             {
-                printf("connected.\n");
+                //printf("connected.\n");
             }
         }
 
@@ -95,8 +95,8 @@ void* uart_tstart(void* arg)
                     continue;
                 }
 
-                printf("error reading serial port: (%d) %s\n", errno, strerror(errno));
-                printf("closing.\n");
+                //printf("error reading serial port: (%d) %s\n", errno, strerror(errno));
+                //printf("closing.\n");
                 close(serial_port);
                 connected = 0;
                 //break;
@@ -116,12 +116,12 @@ int uart_init(int* serial_port)
     *serial_port = open(uart_dev, O_RDWR|O_NOCTTY|O_NONBLOCK);
     if(*serial_port < 0)
     {
-        printf("error opening serial port: %s\n", strerror(errno));
+        //printf("error opening serial port: %s\n", strerror(errno));
         return 1;
     }
     else
     {
-        printf("successfully opened serial port.\n");
+        //printf("successfully opened serial port.\n");
     }
 
     /*if(uart_init(serial_port) != 0)
@@ -135,7 +135,7 @@ int uart_init(int* serial_port)
     struct termios tty;
     if(tcgetattr(*serial_port, &tty) != 0)
     {
-        printf("error fetching tty settings: %s\n", strerror(errno));
+        //printf("error fetching tty settings: %s\n", strerror(errno));
         close(*serial_port);
         return 3;
     }
@@ -155,12 +155,12 @@ int uart_init(int* serial_port)
     // set tty settings
     if(tcsetattr(*serial_port, TCSANOW, &tty) != 0)
     {
-        printf("error setting tty settings: %s\n", strerror(errno));
+        //printf("error setting tty settings: %s\n", strerror(errno));
         close(*serial_port);
         return 4;
     }
 
-    printf("uart communication established.\n");
+    //printf("uart communication established.\n");
     connected = 1;
     return 0;
 }

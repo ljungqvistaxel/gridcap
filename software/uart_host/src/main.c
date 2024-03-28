@@ -97,6 +97,33 @@ int main(int argc, char** argv)
         {
             show_live();
         }
+        else if(strcmp(scan_buf, "save") == 0)
+        {
+            printf("sheet: 0.5, point:1, force: ");
+            scanf("%s", scan_buf);
+            char fn[100];
+            sprintf(fn, "readings/05_1_%s.txt", scan_buf);
+            int f = open(fn, O_WRONLY | O_CREAT, 0666);
+            if(f < 0) //error
+            {
+                printf("error: %s\n", strerror(errno));
+                continue;
+            }
+            for(int i = 0; i < 64; i++)
+            {
+                char wb[100] = {0};
+                int res = sprintf(wb, "%f ", cap_buf[i]); 
+                write(f, wb, res);
+            }
+            write(f, "\n", 1);
+            for(int i = 0; i < 64; i++)
+            {
+                char wb[100] = {0};
+                int res = sprintf(wb, "%f ", tare_buf[i]);
+                write(f, wb, res);
+            }
+            close(f);
+        }
         else if(strcmp(scan_buf, "tare") == 0)
         {
             int filled = 1;
