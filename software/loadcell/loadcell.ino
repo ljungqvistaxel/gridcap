@@ -30,6 +30,6 @@ void setup() {
 
 void loop() {
   Serial.print("average:\t");
-  Serial.println(scale.get_units(10), 1);
-  delay(10);
+  Serial.println(scale.get_units(5), 1);
+  delay(1);
 }
