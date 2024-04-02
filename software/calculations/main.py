@@ -20,7 +20,6 @@ for thickness in ["05", "07", "10"]:
 
         if(len(forces) == len(maxes)):
             pyplot.plot(forces, maxes, linewidth=2.0)
-            pyplot.title("thickness: " + thickness + ", pos: " + str(position))
-            pyplot.show()
 
-            
+    pyplot.title("thickness: " + thickness)
+    pyplot.show()
