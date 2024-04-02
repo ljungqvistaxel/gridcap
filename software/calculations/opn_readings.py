@@ -1,5 +1,4 @@
 
-
 def open_test_data(file_name: str):
     f = open(file_name, "r")
 
@@ -18,7 +17,4 @@ def open_test_data(file_name: str):
                 ix+=1
         is_offset = True #Second row has data to tare the first row
 
-    print(tared_data)
-
-
-open_test_data("readings/05_1000.txt")
+    return tared_data
