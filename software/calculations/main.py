@@ -32,7 +32,7 @@ for thickness in ["05", "07", "10"]:
                 maxes.append(max(caps))
 
         if(len(forces) == len(maxes)):
-            pyplot.title("thickness: " + thickness)
+            pyplot.title("thickness: " + thickness + ", point: " + str(position))
             pyplot.xlabel("radius from applied force (mm)")
             pyplot.ylabel("capacitance reading (mean)")
             pyplot.legend([str(f) for f in forces])
