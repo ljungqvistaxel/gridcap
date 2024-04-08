@@ -124,6 +124,31 @@ int main(int argc, char** argv)
             }
             close(f);
         }
+        else if(strcmp(scan_buf, "load") == 0)
+        {
+            printf("specify file from readings/ ");
+            scanf("%s", scan_buf);
+            char fn[150];
+            sprintf(fn, "readings/%s", scan_buf);
+            int f = open(fn, O_RDONLY);
+            if(f < 0) //error
+            {
+                printf("error: %s\n", strerror(errno));
+                continue;
+            }
+            char wb[64*15*2] = {0};
+            read(f, wb, sizeof(wb));
+            printf(wb);
+            for(int i = 0; i < 64; i++)
+            {
+
+            }
+            for(int i = 0; i < 64; i++)
+            {
+
+            }
+            close(f);
+        }
         else if(strcmp(scan_buf, "tare") == 0)
         {
             int filled = 1;
