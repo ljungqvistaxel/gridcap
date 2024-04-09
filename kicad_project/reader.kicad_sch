@@ -888,7 +888,7 @@
     (property "Reference" "R1" (at 134.62 88.9 90)
       (effects (font (size 1.27 1.27)))
     )
-    (property "Value" "10M" (at 134.62 91.44 90)
+    (property "Value" "20k" (at 134.62 91.44 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Footprint" "" (at 134.62 97.028 90)
