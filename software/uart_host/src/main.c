@@ -86,7 +86,7 @@ int main(int argc, char** argv)
     // menu loop
     while(program_state != exiting)
     {
-        printf("\nMenu:\n live\n tare\n reset (tare and buffers)\n exit\n\n");
+        printf("\nMenu:\n live\n tare\n save\n load\n show\n reset (tare and buffers)\n exit\n\n");
         printf("gridcap > ");
         scanf("%s", scan_buf);
         if(strcmp(scan_buf, "exit") == 0)
@@ -123,6 +123,58 @@ int main(int argc, char** argv)
                 write(f, wb, res);
             }
             close(f);
+        }
+        else if(strcmp(scan_buf, "load") == 0)
+        {
+            printf("specify file from readings/ ");
+            scanf("%s", scan_buf);
+            char fn[150];
+            sprintf(fn, "readings/%s", scan_buf);
+            int f = open(fn, O_RDONLY);
+            if(f < 0) //error
+            {
+                printf("error: %s\n", strerror(errno));
+                continue;
+            }
+            char wb[64*15*2] = {0};
+            read(f, wb, sizeof(wb));
+            //printf(wb);
+            char* scan_pos = wb;
+            for(int i = 0; i < 64; i++)
+            {
+                char* space_pos = strchr(scan_pos, ' ');
+                if(space_pos == NULL)
+                {
+                    printf("error interpreting file.\n");
+                }
+                else
+                {
+                    cap_buf[i] = atof(scan_pos);
+                    scan_pos = space_pos+1;
+                }
+            }
+            for(int i = 0; i < 64; i++)
+            {
+                char* space_pos = strchr(scan_pos, ' ');
+                if(space_pos == NULL)
+                {
+                    printf("error interpreting file.\n");
+                }
+                else
+                {
+                    tare_buf[i] = atof(scan_pos);
+                    scan_pos = space_pos+1;
+                }
+            }
+            close(f);
+        }
+        else if(strcmp(scan_buf, "show") == 0)
+        {
+            print_matrix(tare_buf, 0, 0);
+            printf("\n");
+            print_matrix(cap_buf, 0, 0);
+            printf("\n");
+            print_matrix(cap_buf, 0, 1);
         }
         else if(strcmp(scan_buf, "tare") == 0)
         {
