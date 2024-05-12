@@ -64,8 +64,9 @@ def plot_radius_curves():
     data_path = "readings/"
     for thickness in ["05", "07", "10"]:
         #fig = pyplot.figure(figsize=(12,8))
-        radius_caps = [[], [], []] # capacitances and their radius from max point
+        force_rad = [forces, [0]*len(forces), [0]*len(forces)] # capacitances and their radius from max point
         for position in range(9):
+            pos_plot = [forces,[0]*len(forces)]
             for force in forces:
                 data_file_name = thickness + "_" + str(position) + "_" + str(force) + ".txt"
                 if os.path.isfile(data_path + data_file_name):
@@ -80,19 +81,29 @@ def plot_radius_curves():
                     radius = 0
                     for i in range(len(radcap[0])-1, 0, -1):
                         #print("i: " + str(i))
-                        if(radcap[1][i] >= 2.0):
+                        if(radcap[1][i] >= 1.0):
                             radius = radcap[0][i]
                             #print("radius: " + str(radius))
                             break
+
+                    # add up for mean calculation
+                    try:
+                        fi = forces.index(force)
+                        force_rad[1][fi] += radius
+                        force_rad[2][fi] += 1
+
+                        pos_plot[1][fi] = radius
+                    except ValueError:
+                        print("unknown index error")
                     
-                    if (position == 6):# and force == 2000):
+                    """if (position == 6):# and force == 2000):
                         print("force: " + str(force) + ", radius: " + str(radius))
                         if(thickness == "05"):
                             pyplot.plot(force, radius, "r-", linewidth=2.0)
                         if(thickness == "07"):
                             pyplot.plot(force, radius, "g-", linewidth=1.0)
                         if(thickness == "10"):
-                            pyplot.plot(force, radius, "b-", linewidth=1.0)
+                            pyplot.plot(force, radius, "b-", linewidth=1.0)"""
 
                     """maxcap = max(radcap[1])
                     for i in range(len(radcap[1])):
@@ -111,51 +122,23 @@ def plot_radius_curves():
                     #if(len(radcap) == 0):
                     #    continue
 
-                    # add up for mean calculation
-                    try:
-                        print("radius: " + str(radius))
-                        #ri = radius_caps[0].index(radcap[0][i])
-                        found = False
-                        for j in range(len(radius_caps[1])):
-                            print("j: " + str(j) + "/" + str(len(radius_caps[1])))
-                            r1 = radius
-                            r2 = radcap[0][i]
-                            #print("r1: " + str(r1))
-                            #print("r2: " + str(r2))
-                            if((r1 + 0.1) > r2 and (r1 - 0.1) < r2):
-                                found = True
-                                ri = j
-                                break
-                        if(found == False):
-                            raise ValueError
-                        
-                        print("found ri: " + str(ri))
-                        radius_caps[0][ri] += radcap[0][i]
-                        radius_caps[1][ri] += radcap[1][i]
-                        radius_caps[2][ri] += 1
-                    except ValueError:
-                        radius_caps[0].append(radcap[0][i])
-                        radius_caps[1].append(radcap[1][i])
-                        radius_caps[2].append(1)
-                        print("new ri: " + str(len(radius_caps[2])-1))
+                    
 
                     #radius_caps_temp = 
                     #radius_caps_temp.sort()
 
                     # divide for mean calculation
-        for i in range(len(radius_caps[2])):
-            print("index: " + str(i) + " / " + str(len(radius_caps[2])-1))
-            print(str(radius_caps[1][i]) + " / " + str(radius_caps[2][i]))
-            radius_caps[1][i] = (radius_caps[1][i])/(radius_caps[2][i])
-        
-        """if(position == 0):
-            radius_caps[0].append(radcap[0])
-            radius_caps[1].append(radcap[1])
-        else:
-            radius_caps[0]"""
-                    
-        pyplot.plot(radcap[0], radcap[1])
 
+            #pyplot.plot(pos_plot[0], pos_plot[1], "k--", linewidth=0.5)
+
+        for i in range(len(force_rad[2])):
+            #print("index: " + str(i) + " / " + str(len(force_rad[2])-1))
+            print(str(force_rad[1][i]) + " / " + str(force_rad[2][i]))
+            force_rad[1][i] = (force_rad[1][i])/(force_rad[2][i])
+                    
+        pyplot.plot(force_rad[0], force_rad[1], label=thickness)
+
+    pyplot.legend()
     pyplot.show()
             
 if __name__ == '__main__':
