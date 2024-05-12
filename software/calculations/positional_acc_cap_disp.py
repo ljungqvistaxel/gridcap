@@ -19,7 +19,7 @@ def get_pos_acc():
     accies = []
 
     for thickness in ["05", "07", "10"]:
-        average_cap_per_force_arr = [0] * 10
+        average_cap_per_force_arr = [0] * len(forces)
         for position in range(9):
             for force in forces:
                 data_file_name = thickness + "_" + str(position) + "_" + str(force) + ".txt"
@@ -43,10 +43,8 @@ def get_pos_acc():
                     average_cap_per_force_arr[forces.index(force)] += ix_pos_acc
                     module_pos_acc.update({thickness:(module_pos_acc[thickness]+ix_pos_acc)})
 
-        
-
         for ix in range(len(forces)):
-            average_cap_per_force_arr[ix] /= 9
+            average_cap_per_force_arr[ix] /= len(pressure_point_ix)
 
         if(thickness == "05"):
             pyplot.plot(forces, average_cap_per_force_arr, "b-", linewidth=2.0, label="0.5 mm")
@@ -57,8 +55,6 @@ def get_pos_acc():
         elif(thickness == "10"):
             pyplot.plot(forces, average_cap_per_force_arr, "g-", linewidth=2.0, label="1.0 mm")
 
-                
-
         average_pos_acc = module_pos_acc[thickness]
         average_pos_acc = average_pos_acc/(test_iterations)
 
@@ -66,10 +62,6 @@ def get_pos_acc():
 
         test_iterations = 0
 
-        
-
-        
-        
         accies.clear()
 
     pyplot.legend()
