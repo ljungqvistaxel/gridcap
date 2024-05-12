@@ -75,7 +75,7 @@ def get_pos_acc():
     pyplot.legend()
     pyplot.title("Positional accuracy of different sheet metal thicknesses")
     pyplot.xlabel("applied force (mN)")
-    pyplot.ylabel("Accyracy (%)")
+    pyplot.ylabel("Accuracy (%)")
     pyplot.xticks(forces)
     pyplot.grid()
     
