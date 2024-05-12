@@ -54,12 +54,13 @@ def get_capacitance_radius(caps):
     #print("res: " + str(res))
     return res
 
+position_to_index = [17, 19, 21, 33, 35, 37, 49, 51, 53]
 
 def plot_radius_curves():
 
     forces = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
 
-    #fig = pyplot.figure(figsize=(12,8))
+    fig = pyplot.figure(figsize=(12,8))
 
     data_path = "readings/"
     for thickness in ["05", "07", "10"]:
@@ -79,10 +80,21 @@ def plot_radius_curves():
                     # [[rad1, rad2, rad3], [cap1, cap2, cap3]]
 
                     radius = 0
+                    threshold = 2.0
                     for i in range(len(radcap[0])-1, 0, -1):
                         #print("i: " + str(i))
-                        if(radcap[1][i] >= 1.0):
-                            radius = radcap[0][i]
+                        if(radcap[1][i] >= threshold):
+                            cap_overshoot = radcap[1][i] - threshold
+                            cap_diff = radcap[1][i] - radcap[1][i+1]
+
+                            rad_diff = radcap[0][i] - radcap[0][i+1]
+                            rad_overshoot = (cap_overshoot/cap_diff) * rad_diff
+
+                            print("rad overshoot: " + str(rad_overshoot))
+
+                            radius = radcap[0][i] - rad_overshoot
+
+                            #radius = radcap[0][i]
                             #print("radius: " + str(radius))
                             break
 
@@ -131,14 +143,39 @@ def plot_radius_curves():
 
             #pyplot.plot(pos_plot[0], pos_plot[1], "k--", linewidth=0.5)
 
+            if(thickness == "05"):
+                #pyplot.plot(pos_plot[0], pos_plot[1], "b--", linewidth=0.3)
+                pass
+            elif(thickness == "07"):
+                #pyplot.plot(pos_plot[0], pos_plot[1], "r--", linewidth=0.3)
+                pass
+            elif(thickness == "10"):
+                #pyplot.plot(pos_plot[0], pos_plot[1], "g--", linewidth=0.3)
+                pass
+
         for i in range(len(force_rad[2])):
             #print("index: " + str(i) + " / " + str(len(force_rad[2])-1))
             print(str(force_rad[1][i]) + " / " + str(force_rad[2][i]))
             force_rad[1][i] = (force_rad[1][i])/(force_rad[2][i])
                     
-        pyplot.plot(force_rad[0], force_rad[1], label=thickness)
+        #pyplot.plot(force_rad[0], force_rad[1], label=thickness)
+
+        if(thickness == "05"):
+            pyplot.plot(force_rad[0], force_rad[1], "b-", linewidth=2.0, label="0.5 mm")
+            pass
+        elif(thickness == "07"):
+            pyplot.plot(force_rad[0], force_rad[1], "r-", linewidth=2.0, label="0.7 mm")
+            pass
+        elif(thickness == "10"):
+            pyplot.plot(force_rad[0], force_rad[1], "g-", linewidth=2.0, label="1.0 mm")
+            pass
 
     pyplot.legend()
+    pyplot.title("Response radius of different sheet metal thicknesses")
+    pyplot.xlabel("applied force (mN)")
+    pyplot.xticks(forces)
+    pyplot.ylabel("response radius (mm)")
+    pyplot.grid()
     pyplot.show()
             
 if __name__ == '__main__':

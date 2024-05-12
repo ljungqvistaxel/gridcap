@@ -54,13 +54,13 @@ def plot_capacitance_per_force_curves():
                     #maxes.append(max(caps))
 
             if(thickness == "05"):
-                pyplot.plot(forces, pos_maxes, "b--", linewidth=0.5)
+                #pyplot.plot(forces, pos_maxes, "b--", linewidth=0.5)
                 pass
             elif(thickness == "07"):
-                pyplot.plot(forces, pos_maxes, "r--", linewidth=0.5)
+                #pyplot.plot(forces, pos_maxes, "r--", linewidth=0.5)
                 pass
             elif(thickness == "10"):
-                pyplot.plot(forces, pos_maxes, "g--", linewidth=0.5)
+                #pyplot.plot(forces, pos_maxes, "g--", linewidth=0.5)
                 pass
 
         if(len(maxes)==len(forces)):
@@ -82,7 +82,12 @@ def plot_capacitance_per_force_curves():
             pyplot.title("Capacitance response of different sheet metal thicknesses")
             pyplot.xlabel("applied force (mN)")
             pyplot.ylabel("capacitance reading (pF)")
+            pyplot.xticks(forces)
+            pyplot.grid()
             #pyplot.show()
             #pyplot.plot(forces, maxes, linewidth=2.0)
             
     pyplot.show()
+
+if __name__ == '__main__':
+    plot_capacitance_per_force_curves()
