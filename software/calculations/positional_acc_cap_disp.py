@@ -48,7 +48,15 @@ def get_pos_acc():
         for ix in range(len(forces)):
             average_cap_per_force_arr[ix] /= 9
 
-        pyplot.plot(forces, average_cap_per_force_arr)
+        if(thickness == "05"):
+            pyplot.plot(forces, average_cap_per_force_arr, "b-", linewidth=2.0, label="0.5 mm")
+
+        elif(thickness == "07"):
+            pyplot.plot(forces, average_cap_per_force_arr, "r-", linewidth=2.0, label="0.7 mm")
+
+        elif(thickness == "10"):
+            pyplot.plot(forces, average_cap_per_force_arr, "g-", linewidth=2.0, label="1.0 mm")
+
                 
 
         average_pos_acc = module_pos_acc[thickness]
