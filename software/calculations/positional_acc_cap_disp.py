@@ -7,8 +7,6 @@ from opn_readings import open_test_data
 def get_pos_acc():
     forces = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
 
-    #
-
     fig = pyplot.figure(figsize=(12,8))
 
     data_path = "readings/"
@@ -61,10 +59,19 @@ def get_pos_acc():
         test_iterations = 0
 
         
+
+        
         
         accies.clear()
 
+    pyplot.legend()
+    pyplot.title("Positional accuracy of different sheet metal thicknesses")
+    pyplot.xlabel("applied force (mN)")
+    pyplot.ylabel("Accyracy (%)")
+    pyplot.xticks(forces)
+    pyplot.grid()
     
+    pyplot.savefig('plots/positional_accuracy.png', bbox_inches='tight')
     pyplot.show()
 
 get_pos_acc()
