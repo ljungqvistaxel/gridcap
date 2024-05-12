@@ -18,7 +18,7 @@ def plot_capacitance_per_force_curves():
             sums = [] # sum of capacitances in reading
             radius_caps = [[], []] # capacitances and their radius from max point
             pos_maxes = [0.0]*10
-            virtual_tare = 0
+            #virtual_tare = 0
             for force in forces:
                 data_file_name = thickness + "_" + str(position) + "_" + str(force) + ".txt"
                 if os.path.isfile(data_path + data_file_name):
@@ -29,15 +29,15 @@ def plot_capacitance_per_force_curves():
                     force_i = forces.index(force)
 
                     # virtual tare
-                    if(force_i == 0):
-                        virtual_tare = max(caps)
+                    #if(force_i == 0):
+                    #    virtual_tare = max(caps)
 
                     if(len(maxes) <= force_i):
                         maxes.append(0)
                     
-                    maxes[force_i] += max(caps) - virtual_tare
+                    maxes[force_i] += max(caps)# - virtual_tare
 
-                    pos_maxes[force_i] = max(caps) - virtual_tare
+                    pos_maxes[force_i] = max(caps)# - virtual_tare
 
                     if(force == 2000):
                         print("cap@2000: " + str(max(caps)))
