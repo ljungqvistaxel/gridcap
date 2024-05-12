@@ -79,7 +79,7 @@ void stop_pad_charging(){
 	GPIOB->ODR &= ~(Z0_Pin | Z1_Pin | Z2_Pin | Z3_Pin);	//STOP pad-charging pins
 }
 
-uint16_t arr_charge_time[10];
+uint16_t arr_charge_time[50];
 uint8_t sample_ix = 0;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	TIM5->CR1 &= ~(0x0001);  	//Stops timer (bit CEN in CR1 register)

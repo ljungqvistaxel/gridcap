@@ -27,9 +27,10 @@ void setup() {
 
   Serial.print("\n\rReadings:\n\r");
 }
-
+float reading = 0;
 void loop() {
-  Serial.print("average:\t");
-  Serial.println(scale.get_units(5), 1);
+  Serial.print("mNewton:\t");
+  reading = scale.get_units(2);
+  Serial.println(reading * 0.982, 1);
   delay(1);
 }
