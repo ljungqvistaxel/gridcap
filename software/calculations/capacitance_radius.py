@@ -171,12 +171,12 @@ def plot_radius_curves():
             pass
 
     pyplot.legend()
-    pyplot.title("Response radius of different sheet metal thicknesses")
+    pyplot.title("Response radius (2.0 pF) of different sheet metal thicknesses")
     pyplot.xlabel("applied force (mN)")
     pyplot.xticks(forces)
     pyplot.ylabel("response radius (mm)")
     pyplot.grid()
-    
+
     pyplot.savefig('plots/response_radius.png', bbox_inches='tight')
     pyplot.show()
             
