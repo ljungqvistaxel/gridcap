@@ -87,6 +87,7 @@ def plot_capacitance_per_force_curves():
             #pyplot.show()
             #pyplot.plot(forces, maxes, linewidth=2.0)
             
+    pyplot.savefig('plots/capacitance_response.png', bbox_inches='tight')
     pyplot.show()
 
 if __name__ == '__main__':

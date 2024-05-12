@@ -176,6 +176,8 @@ def plot_radius_curves():
     pyplot.xticks(forces)
     pyplot.ylabel("response radius (mm)")
     pyplot.grid()
+    
+    pyplot.savefig('plots/response_radius.png', bbox_inches='tight')
     pyplot.show()
             
 if __name__ == '__main__':
