@@ -59,15 +59,16 @@ position_to_index = [17, 19, 21, 33, 35, 37, 49, 51, 53]
 def plot_radius_curves():
 
     forces = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
+    forces_inc0 = [0]+forces
 
     fig = pyplot.figure(figsize=(12,8))
 
     data_path = "readings/"
     for thickness in ["05", "07", "10"]:
         #fig = pyplot.figure(figsize=(12,8))
-        force_rad = [forces, [0]*len(forces), [0]*len(forces)] # capacitances and their radius from max point
+        force_rad = [forces_inc0, [0]*len(forces_inc0), [1]+([0]*len(forces))] # capacitances and their radius from max point
         for position in range(9):
-            pos_plot = [forces,[0]*len(forces)]
+            pos_plot = [forces_inc0, [0]*len(forces_inc0)]
             for force in forces:
                 data_file_name = thickness + "_" + str(position) + "_" + str(force) + ".txt"
                 if os.path.isfile(data_path + data_file_name):
@@ -100,7 +101,7 @@ def plot_radius_curves():
 
                     # add up for mean calculation
                     try:
-                        fi = forces.index(force)
+                        fi = forces.index(force)+1
                         force_rad[1][fi] += radius
                         force_rad[2][fi] += 1
 
@@ -173,7 +174,7 @@ def plot_radius_curves():
     pyplot.legend()
     pyplot.title("Response radius (2.0 pF) of different sheet metal thicknesses")
     pyplot.xlabel("applied force (mN)")
-    pyplot.xticks(forces)
+    pyplot.xticks(forces_inc0)
     pyplot.ylabel("response radius (mm)")
     pyplot.grid()
 
