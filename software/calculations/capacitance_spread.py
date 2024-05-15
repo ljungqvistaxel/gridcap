@@ -5,7 +5,7 @@ import matplotlib.pyplot as pyplot
 from opn_readings import open_test_data
 from capacitance_radius import get_capacitance_radius
 
-def plot_capacitance_spread():
+def plot_capacitance_spread(wanted_thickness):
 
     forces = [200, 400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000]
 
@@ -53,13 +53,13 @@ def plot_capacitance_spread():
 
                     #maxes.append(max(caps))
 
-            if(thickness == "05"):
-                #pyplot.plot(forces, pos_maxes, "b--", linewidth=0.5)
+            if(thickness == "05" and wanted_thickness == "05"):
+                pyplot.plot(forces, pos_maxes, "b--", linewidth=0.5)
                 pass
-            elif(thickness == "07"):
-                #pyplot.plot(forces, pos_maxes, "r--", linewidth=0.7)
+            elif(thickness == "07" and wanted_thickness == "07"):
+                pyplot.plot(forces, pos_maxes, "r--", linewidth=0.7)
                 pass
-            elif(thickness == "10"):
+            elif(thickness == "10" and wanted_thickness == "10"):
                 pyplot.plot(forces, pos_maxes, "g--", linewidth=0.5)
                 pass
 
@@ -67,13 +67,13 @@ def plot_capacitance_spread():
             for i in range(len(forces)):
                 maxes[i] = maxes[i] / 9
 
-            if(thickness == "05"):
-                #pyplot.plot(forces, maxes, "b-", linewidth=2.0, label="0.5 mm")
+            if(thickness == "05" and wanted_thickness == "05"):
+                pyplot.plot(forces, maxes, "b-", linewidth=2.0, label="0.5 mm")
                 pass
-            elif(thickness == "07"):
-                #pyplot.plot(forces, maxes, "r-", linewidth=2.0, label="0.7 mm")
+            elif(thickness == "07" and wanted_thickness == "07"):
+                pyplot.plot(forces, maxes, "r-", linewidth=2.0, label="0.7 mm")
                 pass
-            elif(thickness == "10"):
+            elif(thickness == "10" and wanted_thickness == "10"):
                 pyplot.plot(forces, maxes, "g-", linewidth=2.0, label="1.0 mm")
                 pass
 
@@ -87,8 +87,10 @@ def plot_capacitance_spread():
             #pyplot.show()
             #pyplot.plot(forces, maxes, linewidth=2.0)
             
-    pyplot.savefig('plots/capacitance_spread.png', bbox_inches='tight')
+    pyplot.savefig('plots/capacitance_spread_'+wanted_thickness+'.png', bbox_inches='tight')
     pyplot.show()
 
 if __name__ == '__main__':
-    plot_capacitance_spread()
+    plot_capacitance_spread("05")
+    plot_capacitance_spread("07")
+    plot_capacitance_spread("10")
