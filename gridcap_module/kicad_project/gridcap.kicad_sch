@@ -3561,6 +3561,23 @@
     )
   )
 
+  (sheet (at 22.86 22.86) (size 82.55 53.34) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 377411bc-5ddd-4767-b5f9-88461a75b2ce)
+    (property "Sheetname" "Reader" (at 22.86 22.1484 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "reader.kicad_sch" (at 22.86 76.7846 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "gridcap"
+        (path "/78a49c71-2951-48b9-8f1e-813ada77e8b7" (page "2"))
+      )
+    )
+  )
+
   (sheet_instances
     (path "/" (page "1"))
   )
