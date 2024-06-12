@@ -5,11 +5,11 @@ This repository contains software, PCB design files, and 3D models used in the r
 ## Used hardware and components
 
 Gridcap module: 
-- stm32f401re, charges/discharges pads and reads charging time with a 11.9 ns resolution, and sends the pads charging time over UART
-- 20x20 aluminium extrution (any standard length works, as long as its long enough)
-- 220 kOhm resistor for pad charging
+- stm32f401re, charges/discharges pads and reads charging time with a 11.9 ns resolution, and sends the pads charging time over UART.
+- 20x20 aluminium extrution (any standard length works, as long as its long enough).
+- 220 kOhm resistor for pad charging.
 - 74HC4067PW-Q100J MUX (4x), found at: https://www.mouser.se/ProductDetail/Nexperia/74HC4067PW-Q100J?qs=sPdA%252BpIfi%2F%252BXvXN1KGf9sg%3D%3D
-- 0.5mm, 0.7mm or 1.0mm thich aluminium metal sheet (110mm x 110mm)
+- 0.5mm, 0.7mm or 1.0mm thich aluminium metal sheet (110mm x 110mm).
 - SN74HC14N schmitt trigger, found at: https://www.digikey.se/sv/products/detail/texas-instruments/SN74HC14N/277223
 
 Test rig:
